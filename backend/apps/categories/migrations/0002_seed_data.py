@@ -68,6 +68,8 @@ ACCOUNTS = [
      'match_keywords': '招商信用卡,招行信用卡,cmb_credit'},
     {'name': '支付宝', 'account_type': 'platform', 'bank_name': '',
      'match_keywords': '支付宝,alipay,余额'},
+    {'name': '微信支付', 'account_type': 'platform', 'bank_name': '',
+     'match_keywords': '微信,wechat,零钱'},
     {'name': '京东白条', 'account_type': 'platform', 'bank_name': '京东',
      'match_keywords': '京东,白条,jd'},
     {'name': '美团月付', 'account_type': 'platform', 'bank_name': '美团',

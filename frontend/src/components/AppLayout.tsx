@@ -33,9 +33,9 @@ export default function AppLayout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
 
-  // HashRouter: 路径在 hash 中，格式为 #/path
-  const hashPath = location.hash.replace('#', '') || '/dashboard';
-  const selectedKey = '/' + hashPath.split('/')[1];
+  // HashRouter: useLocation() 的 pathname 直接是 hash 中的路径
+  // 例如 URL #/import → pathname = /import
+  const selectedKey = '/' + (location.pathname.split('/')[1] || 'dashboard');
 
   return (
     <Layout style={{ minHeight: '100vh' }}>

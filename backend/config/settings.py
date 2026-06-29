@@ -40,7 +40,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # Whitenoise：仅在非 DEBUG 模式（生产环境）启用
+] + (['whitenoise.middleware.WhiteNoiseMiddleware'] if not DEBUG else []) + [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -104,9 +105,12 @@ USE_TZ = True
 
 # ── 静态文件 ──────────────────────────────────────────
 
-STATIC_URL = '/static/'
+STATIC_URL = '/assets/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# 禁用 APPEND_SLASH，避免 SPA 路由和静态文件路径问题
+APPEND_SLASH = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

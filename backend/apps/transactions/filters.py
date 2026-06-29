@@ -23,6 +23,7 @@ class TransactionFilter(django_filters.FilterSet):
     statuses = django_filters.CharFilter(method='filter_multi_status')
     directions = django_filters.CharFilter(method='filter_multi_direction')
     categories = django_filters.CharFilter(method='filter_multi_category')
+    trans_types = django_filters.CharFilter(method='filter_multi_trans_type')
 
     class Meta:
         model = Transaction
@@ -63,4 +64,10 @@ class TransactionFilter(django_filters.FilterSet):
                 return queryset.filter(category_id__in=cat_ids)
         except ValueError:
             pass
+        return queryset
+
+    def filter_multi_trans_type(self, queryset, name, value):
+        types = [t.strip() for t in value.split(',') if t.strip()]
+        if types:
+            return queryset.filter(trans_type__in=types)
         return queryset

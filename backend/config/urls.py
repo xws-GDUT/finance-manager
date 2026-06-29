@@ -1,11 +1,27 @@
 """
 URL 路由配置 — 对应需求文档 43 个 API 端点
 """
+import os
+import mimetypes
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
+from django.http import FileResponse, Http404
+
+
+def serve_frontend_assets(request, path):
+    """服务前端构建产物（JS/CSS/图片等静态资源）"""
+    full = os.path.normpath(os.path.join(str(settings.STATIC_ROOT), path))
+    # 安全检查：确保文件在 STATIC_ROOT 内
+    if not full.startswith(str(settings.STATIC_ROOT)):
+        raise Http404('Access denied')
+    if not os.path.isfile(full):
+        raise Http404(f'File not found: {path}')
+    content_type, _ = mimetypes.guess_type(full)
+    return FileResponse(open(full, 'rb'), content_type=content_type or 'application/octet-stream')
+
 
 urlpatterns = [
     # Django Admin
@@ -36,6 +52,9 @@ urlpatterns = [
     # 账户管理（1 端点）
     path('api/accounts', include('apps.accounts.urls')),
 
+    # 前端静态资源（JS/CSS/图片等）
+    re_path(r'^assets/(?P<path>.*)$', serve_frontend_assets, name='frontend-assets'),
+
     # 前端 SPA — 所有非 API/非静态资源路径返回 index.html
     re_path(r'^(?!api/|admin/|static/|assets/|media/).*$', TemplateView.as_view(
         template_name='index.html'
@@ -44,5 +63,3 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    urlpatterns += static('/assets/', document_root=str(settings.STATIC_ROOT / 'assets'))
-

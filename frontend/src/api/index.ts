@@ -25,7 +25,7 @@ export const fetchTransaction = (id: number) =>
   api.get<Transaction>(`/transactions/${id}/`).then(r => r.data);
 
 export const updateTransaction = (id: number, data: Partial<Transaction>) =>
-  api.put<Transaction>(`/transactions/${id}/`, data).then(r => r.data);
+  api.patch<Transaction>(`/transactions/${id}/`, data).then(r => r.data);
 
 export const deleteTransaction = (id: number) =>
   api.delete(`/transactions/${id}/`);
@@ -50,13 +50,13 @@ export const fetchStatsDaily = () =>
 // ── 有效规则 ──────────────────────────────────────────
 
 export const fetchValidRules = () =>
-  api.get<ValidRule[]>('/valid-rules/').then(r => r.data);
+  api.get<{ results: ValidRule[] }>('/valid-rules/').then(r => r.data.results);
 
 export const createValidRule = (data: Partial<ValidRule>) =>
   api.post<ValidRule>('/valid-rules/', data).then(r => r.data);
 
 export const updateValidRule = (id: number, data: Partial<ValidRule>) =>
-  api.put<ValidRule>(`/valid-rules/${id}/`, data).then(r => r.data);
+  api.patch<ValidRule>(`/valid-rules/${id}/`, data).then(r => r.data);
 
 export const deleteValidRule = (id: number) =>
   api.delete(`/valid-rules/${id}/`);
@@ -70,13 +70,13 @@ export const applyValidRules = () =>
 // ── 无效规则 ──────────────────────────────────────────
 
 export const fetchInvalidRules = () =>
-  api.get<InvalidRule[]>('/invalid-rules/').then(r => r.data);
+  api.get<{ results: InvalidRule[] }>('/invalid-rules/').then(r => r.data.results);
 
 export const createInvalidRule = (data: Partial<InvalidRule>) =>
   api.post<InvalidRule>('/invalid-rules/', data).then(r => r.data);
 
 export const updateInvalidRule = (id: number, data: Partial<InvalidRule>) =>
-  api.put<InvalidRule>(`/invalid-rules/${id}/`, data).then(r => r.data);
+  api.patch<InvalidRule>(`/invalid-rules/${id}/`, data).then(r => r.data);
 
 export const deleteInvalidRule = (id: number) =>
   api.delete(`/invalid-rules/${id}/`);
@@ -90,7 +90,7 @@ export const applyInvalidRules = () =>
 // ── 退款配对 ──────────────────────────────────────────
 
 export const fetchRefundPairs = () =>
-  api.get<TransactionPair[]>('/refund-pairs/').then(r => r.data);
+  api.get<{ results: TransactionPair[] }>('/refund-pairs/').then(r => r.data.results);
 
 export const autoPair = () =>
   api.post('/refund-pairs/auto/').then(r => r.data);
@@ -114,7 +114,7 @@ export const createAA = (receiptIds: number[], expenseId: number, groupName?: st
 // ── 垫付结算 ──────────────────────────────────────────
 
 export const fetchSettlements = () =>
-  api.get<SettlementGroup[]>('/settlements/').then(r => r.data);
+  api.get<{ results: SettlementGroup[] }>('/settlements/').then(r => r.data.results);
 
 export const fetchSettlement = (id: number) =>
   api.get<SettlementGroup>(`/settlements/${id}/`).then(r => r.data);

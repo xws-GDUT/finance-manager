@@ -204,14 +204,33 @@ def parse_meituan_csv(content: str) -> list[dict]:
         except ValueError:
             continue
 
+        # 提取对手方：从订单标题中取商户名（"-"之前或括号前）
+        counterparty = ''
+        desc = description.strip()
+        # "商户名 订单详情" → 商户名
+        order_match = re.match(r'^(.+?)\s+订单详情', desc)
+        if order_match:
+            counterparty = order_match.group(1).strip()
+        # "商户名-订单号" → 商户名
+        elif '-' in desc and re.search(r'\d{10,}', desc):
+            counterparty = desc.split('-')[0].strip()
+        # "【美团月付】主动还款" → 美团月付
+        elif '美团月付' in desc:
+            counterparty = '美团月付'
+        # "信用卡还款" → 美团月付
+        elif '信用卡还款' in desc:
+            counterparty = '美团月付'
+        else:
+            counterparty = desc[:50]
+
         rows.append({
             'trans_date': parsed_date,
             'amount': amount,
             'direction': direction,
             'trans_type': trans_type.strip(),
             'description': description.strip(),
-            'merchant': description.strip()[:50],
-            'counterparty': '',
+            'merchant': counterparty,
+            'counterparty': counterparty,
             'payment_method': payment_method.strip() or '美团月付',
             'payment_channel': '美团月付',
             'source': 'meituan',
@@ -364,34 +383,85 @@ def parse_bocom_debit_pdf(pages) -> list[dict]:
 
 
 def parse_cmb_debit_pdf(pages) -> list[dict]:
-    """招商银行储蓄卡 PDF — 文本+正则"""
+    """招商银行储蓄卡 PDF — 文本+正则
+    PDF列：记账日期 | 货币 | 交易金额 | 联机余额 | 交易摘要 | 对手信息
+    逐行解析，处理换行跨行情况
+    """
     rows = []
     text = '\n'.join(page.extract_text() or '' for page in pages)
-    pattern = re.compile(
-        r'(\d{4}[-/]\d{2}[-/]\d{2})\s+(.+?)\s+([-]?[\d,]+\.\d{2})\s+[\d,]+\.\d{2}'
+
+    # 逐行正则：日期 CNY 金额 余额 摘要(可能包含空格) 对手方(可选)
+    line_pattern = re.compile(
+        r'^(\d{4}[-/]\d{2}[-/]\d{2})\s+'            # 日期
+        r'CNY\s+'                                      # 货币
+        r'([-]?[\d,]+\.\d{2})\s+'                      # 交易金额
+        r'([\d,]+\.\d{2})\s+'                           # 联机余额
+        r'(.+)$'                                        # 剩余：摘要 + 可能的对手方
     )
-    for match in pattern.finditer(text):
-        date = match.group(1)
-        desc = match.group(2).strip()
-        amount_raw = match.group(3).replace(',', '')
-        if '余额' in desc and '结转' in desc:
+
+    skip_keywords = ['零钱宝', '待清算', '余额结转', '余额 结转']
+
+    for line in text.split('\n'):
+        line = line.strip()
+        m = line_pattern.match(line)
+        if not m:
             continue
+
+        date = m.group(1)
+        amount_raw = m.group(2).replace(',', '')
+        # balance = m.group(3)  # 不需要
+        rest = m.group(4).strip()
+
+        # 跳过非交易行
+        if any(kw in rest for kw in skip_keywords):
+            continue
+
         try:
             amount = Decimal(abs(float(amount_raw)))
         except ValueError:
             continue
         direction = 'expense' if amount_raw.startswith('-') else 'income'
+
         try:
             parsed_date = _parse_date(date)
         except ValueError:
             continue
+
+        # 拆分摘要和对手方：摘要通常是关键词（快捷支付/转账汇款/银联等），对手方在最后
+        trans_type_desc = ''
+        counterparty = ''
+
+        # 已知交易摘要关键词
+        trans_keywords = [
+            '银联无卡自助消费', '银联快捷支付', '银联快捷消费',
+            '快捷支付', '转账汇款', '汇入汇款', '信用卡还款',
+            '掌上生活还款', '快捷退款', '网上支付',
+        ]
+        for kw in trans_keywords:
+            if kw in rest:
+                idx = rest.index(kw)
+                trans_type_desc = kw
+                # 对手方是关键词之后的内容
+                counterparty = rest[idx + len(kw):].strip()
+                # 去掉 "（特约）" 等前缀
+                counterparty = re.sub(r'^（特约）\s*', '', counterparty)
+                break
+
+        if not trans_type_desc:
+            trans_type_desc = rest
+            counterparty = rest
+
+        # 对手方清理
+        counterparty = re.sub(r'\s*\d{4,}\s*$', '', counterparty).strip()
+
         rows.append({
             'trans_date': parsed_date, 'amount': amount, 'direction': direction,
-            'trans_type': _detect_cmb_type(desc),
-            'description': desc, 'merchant': _extract_merchant_from_desc(desc),
-            'counterparty': _extract_counterparty_from_desc(desc),
+            'trans_type': _detect_cmb_type(trans_type_desc),
+            'description': rest,
+            'merchant': counterparty or rest,
+            'counterparty': counterparty,
             'payment_method': '招商银行储蓄卡',
-            'payment_channel': _extract_payment_channel_from_text(desc),
+            'payment_channel': _extract_payment_channel_from_text(rest),
             'source': 'cmb_debit',
         })
     return rows
@@ -410,19 +480,20 @@ def parse_cib_credit_pdf(pages) -> list[dict]:
     """中信信用卡 PDF — 表格+状态机"""
     rows = []
     in_table = False
-    current_month = None
+    current_year = None
     for page in pages:
         text = page.extract_text() or ''
-        month_match = re.search(r'(\d{4})年(\d{1,2})月', text)
-        if month_match:
-            current_month = f"{month_match.group(1)}-{int(month_match.group(2)):02d}"
+        # 检测年份
+        year_match = re.search(r'(\d{4})年\d{1,2}月', text)
+        if year_match:
+            current_year = year_match.group(1)
         tables = page.extract_tables()
         for table in tables:
             for row_data in table:
                 if not row_data or not any(row_data):
                     continue
                 cleaned = [str(c).strip() if c else '' for c in row_data]
-                if any('交易日期' in c or '记账日期' in c for c in cleaned):
+                if any('交易日' in c or '记账日' in c or '交易日期' in c for c in cleaned):
                     in_table = True
                     continue
                 if any('本期应还' in c or '最低还款' in c or '积分' in c for c in cleaned):
@@ -430,31 +501,54 @@ def parse_cib_credit_pdf(pages) -> list[dict]:
                     continue
                 if not in_table:
                     continue
-                parsed = _parse_cib_row(cleaned, current_month)
+                parsed = _parse_cib_row(cleaned, current_year)
                 if parsed:
                     rows.append(parsed)
     return rows
 
 
-def _parse_cib_row(cleaned: list, current_month: str) -> dict | None:
+def _parse_cib_row(cleaned: list, current_year: str | None) -> dict | None:
+    # 中信信用卡 PDF 有两种格式：
+    # 1) 多列：交易日 | 银行记账日 | 卡号后四位 | 交易描述 | 交易货币/金额 | 记账货币/金额
+    # 2) 单列合并：所有数据在第一个 cell 中
     date = ''
     desc_parts = []
     amount_raw = ''
-    for cell in cleaned:
-        if re.match(r'\d{1,2}/\d{1,2}', cell) and not date:
-            date = cell
-        elif re.match(r'^[-]?[\d,]+\.\d{2}$', cell):
-            amount_raw = cell
-        elif cell:
-            desc_parts.append(cell)
+    # 先尝试从单个 cell 中解析（合并格式）
+    full_text = ' '.join(cleaned)
+    # 格式: 20260213 20260213 9198 （特约）美团 CNY 19.50 CNY 19.50
+    compact_match = re.match(
+        r'(\d{8})\s+\d{8}\s+\d{4,}\s+(.+?)\s+CNY\s+([-]?[\d,]+\.\d{2})',
+        full_text
+    )
+    if compact_match:
+        date = compact_match.group(1)
+        desc = compact_match.group(2).strip()
+        amount_raw = compact_match.group(3)
+    else:
+        # 多列格式
+        for cell in cleaned:
+            if re.match(r'\d{1,2}/\d{1,2}', cell) and not date:
+                date = cell
+            elif re.match(r'\d{8}', cell) and not date:
+                date = cell
+            elif re.match(r'^[-]?[\d,]+\.\d{2}$', cell):
+                amount_raw = cell
+            elif cell and cell != 'CNY':
+                desc_parts.append(cell)
+        desc = ' '.join(desc_parts)
+
     if not date or not amount_raw:
         return None
 
-    parts = date.split('/')
-    if current_month:
-        full_date = f"{current_month}-{int(parts[0]):02d}-{int(parts[1]):02d}"
+    # 解析日期
+    if '/' in date:
+        parts = date.split('/')
+        year = current_year or '2026'
+        full_date = f"{year}-{int(parts[0]):02d}-{int(parts[1]):02d}"
     else:
-        full_date = f"2026-{int(parts[0]):02d}-{int(parts[1]):02d}"
+        # YYYYMMDD
+        full_date = f"{date[:4]}-{date[4:6]}-{date[6:8]}"
 
     amount_raw = amount_raw.replace(',', '')
     try:
@@ -463,7 +557,12 @@ def _parse_cib_row(cleaned: list, current_month: str) -> dict | None:
         return None
 
     direction = 'expense' if amount_raw.startswith('-') else 'income'
-    desc = ' '.join(desc_parts)
+
+    # 清理描述：去掉卡号末四位和交易地金额
+    desc_clean = re.sub(r'\s+\d{4}\s+.*$', '', desc).strip()
+    desc_clean = re.sub(r'\s*\(CN\)$', '', desc_clean).strip()
+    if not desc_clean:
+        desc_clean = desc
 
     try:
         parsed_date = _parse_date(full_date)
@@ -472,11 +571,11 @@ def _parse_cib_row(cleaned: list, current_month: str) -> dict | None:
 
     return {
         'trans_date': parsed_date, 'amount': amount, 'direction': direction,
-        'trans_type': _detect_cib_type(desc),
-        'description': desc, 'merchant': _extract_merchant_from_desc(desc),
-        'counterparty': _extract_counterparty_from_desc(desc),
+        'trans_type': _detect_cib_type(desc_clean),
+        'description': desc, 'merchant': _extract_merchant_from_desc(desc_clean),
+        'counterparty': _extract_counterparty_from_desc(desc_clean),
         'payment_method': '中信信用卡',
-        'payment_channel': _extract_payment_channel_from_text(desc),
+        'payment_channel': _extract_payment_channel_from_text(desc_clean),
         'source': 'cib_credit',
     }
 
@@ -526,6 +625,12 @@ def _parse_cmb_credit_row(cleaned: list, year: int | None, month: int | None) ->
     if not date or not amount_raw:
         return None
     desc = desc.strip()
+    # 清理描述：去掉卡号末四位（4位数字）和交易地金额（如 "18.80(CN)"）
+    desc_clean = re.sub(r'\s+\d{4}\s+.*$', '', desc).strip()
+    # 去掉行末的 "(CN)" 标记
+    desc_clean = re.sub(r'\s*\(CN\)$', '', desc_clean).strip()
+    if not desc_clean:
+        desc_clean = desc
     parts = date.split('/')
     if year and month:
         full_date = f"{year}-{int(parts[0]):02d}-{int(parts[1]):02d}"
@@ -536,18 +641,19 @@ def _parse_cmb_credit_row(cleaned: list, year: int | None, month: int | None) ->
         amount = Decimal(abs(float(amount_raw)))
     except ValueError:
         return None
-    direction = 'expense' if amount_raw.startswith('-') else 'income'
+    # 信用卡账单：正数 = 支出（消费），负数 = 收入（还款/退款）
+    direction = 'expense' if not amount_raw.startswith('-') else 'income'
     try:
         parsed_date = _parse_date(full_date)
     except ValueError:
         return None
     return {
         'trans_date': parsed_date, 'amount': amount, 'direction': direction,
-        'trans_type': _detect_cmb_credit_type(desc),
-        'description': desc, 'merchant': _extract_merchant_from_desc(desc),
-        'counterparty': _extract_counterparty_from_desc(desc),
+        'trans_type': _detect_cmb_credit_type(desc_clean),
+        'description': desc, 'merchant': _extract_merchant_from_desc(desc_clean),
+        'counterparty': _extract_counterparty_from_desc(desc_clean),
         'payment_method': '招商银行信用卡',
-        'payment_channel': _extract_payment_channel_from_text(desc),
+        'payment_channel': _extract_payment_channel_from_text(desc_clean),
         'source': 'cmb_credit',
     }
 
@@ -578,11 +684,20 @@ def parse_douyin_pdf(pages) -> list[dict]:
             parsed_date = _parse_date(date)
         except ValueError:
             continue
+        # 从描述中提取对手方
+        counterparty = ''
+        desc_clean = re.sub(r'\d{2}:\d{2}:\d{2}\s*', '', desc).strip()
+        # "支出" 不是对手方，试试提取商户
+        if desc_clean and desc_clean not in ('支出', '收入', '退款'):
+            counterparty = desc_clean
+        elif '支出' in desc or '收入' in desc:
+            counterparty = '抖音月付'
+
         rows.append({
             'trans_date': parsed_date, 'amount': amount, 'direction': direction,
             'trans_type': '抖音月付',
-            'description': desc, 'merchant': _extract_merchant_from_desc(desc),
-            'counterparty': '',
+            'description': desc, 'merchant': counterparty or '抖音月付',
+            'counterparty': counterparty,
             'payment_method': '抖音月付', 'payment_channel': '抖音月付',
             'source': 'douyin',
         })
@@ -660,7 +775,7 @@ def parse_file(file_path: str, filename: str,
 def _parse_date(date_str: str) -> str:
     date_str = date_str.strip()
     for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M:%S',
-                '%Y年%m月%d日', '%m/%d/%Y', '%m/%d/%y']:
+                '%Y年%m月%d日', '%m/%d/%Y', '%m/%d/%y', '%Y%m%d']:
         try:
             return datetime.strptime(date_str, fmt).strftime('%Y-%m-%d')
         except ValueError:
@@ -708,10 +823,37 @@ def _extract_merchant_from_desc(desc: str) -> str:
 
 
 def _extract_counterparty_from_desc(desc: str) -> str:
+    """从交易描述中提取对手方（商户/个人）"""
+    # 还款/退款
+    if '还款' in desc or '退款' in desc:
+        # 手机银行还款 / 掌上生活还款 / 信用卡还款
+        if '手机银行' in desc or '掌上生活' in desc:
+            return '本人还款'
+    # 转账模式
     for pat in [r'转账给(\S+)', r'向(\S+)转账']:
         m = re.search(pat, desc)
         if m:
             return m.group(1)
+    # 信用卡消费：财付通-XXX / 支付宝-XXX
+    for pat in [r'财付通[-\s]*(\S+)', r'支付宝[-\s]*(\S+)']:
+        m = re.search(pat, desc)
+        if m:
+            name = m.group(1)
+            # 去掉末尾的卡号和金额
+            name = re.sub(r'\d{4,}.*$', '', name).strip()
+            name = re.sub(r'[\d.]+\(CN\)$', '', name).strip()
+            name = name.rstrip('-_ ')
+            if name:
+                return name
+    # 美团/抖音/银联等支付
+    for pat in [r'美团[-\s]*(\S+)', r'银联[-\s]*(\S+)',
+                r'（特约）(\S+)', r'特约[-\s]*(\S+)']:
+        m = re.search(pat, desc)
+        if m:
+            name = m.group(1)
+            name = re.sub(r'\d{4,}.*$', '', name).strip()
+            if name:
+                return name
     return ''
 
 
