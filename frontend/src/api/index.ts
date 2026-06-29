@@ -8,8 +8,11 @@ import type {
   Category, Account, ImportLog,
 } from '../types';
 
+// 本地开发通过 Vite proxy 转发 /api，Render 部署通过 VITE_API_BASE 指定后端地址
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
   timeout: 30000,
 });
 
