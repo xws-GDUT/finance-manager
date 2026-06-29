@@ -21,13 +21,13 @@ def generate_unique_key(source: str, trans_date: str, amount: Decimal,
 
 SOURCE_FILENAME_PATTERNS = {
     'alipay': ['支付宝', 'alipay', '余额宝'],
-    'jd': ['京东', 'jd', '白条'],
+    'jd': ['京东', 'jd'],
     'meituan': ['美团', 'meituan'],
     'wechat': ['微信', 'wechat', '零钱'],
-    'douyin': ['抖音', 'douyin', '月付'],
+    'douyin': ['抖音', 'douyin'],
     'bocom_debit': ['交通银行', '交行', 'bocom'],
-    'cmb_debit': ['招商银行', '招商储蓄', '招行储蓄', 'cmb'],
     'cib_credit': ['中信', 'cib'],
+    'cmb_debit': ['招商银行', '招商储蓄', '招行储蓄'],
     'cmb_credit': ['招商信用卡', '招行信用卡', 'cmb_credit'],
 }
 

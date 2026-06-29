@@ -1,0 +1,110 @@
+Watching for file changes with StatReloader
+[29/Jun/2026 21:21:35] "GET / HTTP/1.1" 200 338
+[29/Jun/2026 21:21:35] "GET /assets/index-DswCcF3v.js HTTP/1.1" 200 1656877
+[29/Jun/2026 21:21:35] "GET /api/stats/overview HTTP/1.1" 200 149
+[29/Jun/2026 21:21:35] "GET /dashboard HTTP/1.1" 200 338
+[29/Jun/2026 21:21:45] "GET / HTTP/1.1" 200 338
+[29/Jun/2026 21:21:45] "GET /assets/index-DswCcF3v.js HTTP/1.1" 200 1656877
+[29/Jun/2026 21:21:45] "GET / HTTP/1.1" 200 338
+[29/Jun/2026 21:21:46] "GET /assets/index-DswCcF3v.js HTTP/1.1" 200 1656877
+[29/Jun/2026 21:21:47] "GET /favicon.ico HTTP/1.1" 200 338
+[29/Jun/2026 21:21:47] "GET /dashboard HTTP/1.1" 200 338
+[29/Jun/2026 21:21:47] "GET /api/stats/overview HTTP/1.1" 200 149
+[29/Jun/2026 21:21:47] "GET /api/stats/category HTTP/1.1" 200 2
+[29/Jun/2026 21:21:47] "GET /api/stats/monthly HTTP/1.1" 200 517
+[29/Jun/2026 21:21:48] "GET /api/stats/monthly HTTP/1.1" 200 517
+[29/Jun/2026 21:21:48] "GET /api/stats/category HTTP/1.1" 200 2
+[29/Jun/2026 21:21:48] "GET /favicon.ico HTTP/1.1" 200 338
+[29/Jun/2026 21:21:48] "GET /api/stats/overview HTTP/1.1" 200 149
+[29/Jun/2026 21:21:48] "GET /favicon.ico HTTP/1.1" 200 338
+[29/Jun/2026 21:21:48] "GET /api/transactions/?page=1&page_size=50&ordering=-trans_date HTTP/1.1" 200 52
+[29/Jun/2026 21:21:48] "GET /api/transactions/filter_values/ HTTP/1.1" 200 77
+[29/Jun/2026 21:21:48] "GET /api/categories HTTP/1.1" 200 2446
+[29/Jun/2026 21:21:50] "GET /api/categories HTTP/1.1" 200 2446
+[29/Jun/2026 21:21:50] "GET /favicon.ico HTTP/1.1" 200 338
+[29/Jun/2026 21:21:50] "GET /favicon.ico HTTP/1.1" 200 338
+[29/Jun/2026 21:21:50] "GET /api/import/history HTTP/1.1" 200 2
+[29/Jun/2026 21:21:55] "POST /api/import/upload HTTP/1.1" 200 111
+[29/Jun/2026 21:21:55] "POST /api/import/upload HTTP/1.1" 200 154
+[29/Jun/2026 21:21:55] "POST /api/import/upload HTTP/1.1" 200 107
+[29/Jun/2026 21:21:55] "POST /api/import/upload HTTP/1.1" 200 112
+[29/Jun/2026 21:21:55] "POST /api/import/upload HTTP/1.1" 200 156
+[29/Jun/2026 21:21:55] "GET /api/import/history HTTP/1.1" 200 783
+[29/Jun/2026 21:21:56] "POST /api/import/upload HTTP/1.1" 200 194
+[29/Jun/2026 21:21:56] "GET /api/import/history HTTP/1.1" 200 783
+[29/Jun/2026 21:21:56] "GET /api/import/history HTTP/1.1" 200 783
+[29/Jun/2026 21:21:56] "POST /api/import/upload HTTP/1.1" 200 156
+[29/Jun/2026 21:21:56] "GET /api/import/history HTTP/1.1" 200 783
+[29/Jun/2026 21:21:56] "POST /api/import/upload HTTP/1.1" 200 187
+[29/Jun/2026 21:21:56] "POST /api/import/upload HTTP/1.1" 200 185
+[29/Jun/2026 21:21:56] "GET /api/import/history HTTP/1.1" 200 783
+[29/Jun/2026 21:21:56] "POST /api/import/upload HTTP/1.1" 200 156
+[29/Jun/2026 21:21:57] "GET /api/import/history HTTP/1.1" 200 783
+[29/Jun/2026 21:21:57] "GET /api/import/history HTTP/1.1" 200 783
+[29/Jun/2026 21:21:57] "GET /api/import/history HTTP/1.1" 200 783
+[29/Jun/2026 21:21:57] "GET /api/import/history HTTP/1.1" 200 783
+[29/Jun/2026 21:21:57] "GET /api/import/history HTTP/1.1" 200 783
+[29/Jun/2026 21:21:57] "POST /api/import/upload HTTP/1.1" 200 156
+[29/Jun/2026 21:21:57] "POST /api/import/upload HTTP/1.1" 200 156
+[29/Jun/2026 21:21:57] "GET /api/import/history HTTP/1.1" 200 783
+[29/Jun/2026 21:21:57] "GET /api/import/history HTTP/1.1" 200 783
+/workspace/finance-manager/backend/apps/imports/parser.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 29, 2026 - 21:21:32
+Django version 5.0.6, using settings 'config.settings'
+Starting development server at http://0.0.0.0:8000/
+Quit the server with CONTROL-C.
+
+Watching for file changes with StatReloader
+/workspace/finance-manager/backend/utils/helpers.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 29, 2026 - 21:25:13
+Django version 5.0.6, using settings 'config.settings'
+Starting development server at http://0.0.0.0:8000/
+Quit the server with CONTROL-C.
+
+Watching for file changes with StatReloader
+/workspace/finance-manager/backend/apps/imports/parser.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 29, 2026 - 21:25:32
+Django version 5.0.6, using settings 'config.settings'
+Starting development server at http://0.0.0.0:8000/
+Quit the server with CONTROL-C.
+
+Watching for file changes with StatReloader
+/workspace/finance-manager/backend/apps/imports/parser.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 29, 2026 - 21:26:27
+Django version 5.0.6, using settings 'config.settings'
+Starting development server at http://0.0.0.0:8000/
+Quit the server with CONTROL-C.
+
+Watching for file changes with StatReloader
+/workspace/finance-manager/backend/apps/imports/parser.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 29, 2026 - 21:26:42
+Django version 5.0.6, using settings 'config.settings'
+Starting development server at http://0.0.0.0:8000/
+Quit the server with CONTROL-C.
+
+Watching for file changes with StatReloader
+/workspace/finance-manager/backend/apps/imports/parser.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 29, 2026 - 21:26:50
+Django version 5.0.6, using settings 'config.settings'
+Starting development server at http://0.0.0.0:8000/
+Quit the server with CONTROL-C.
+
+Watching for file changes with StatReloader
