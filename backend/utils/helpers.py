@@ -20,11 +20,11 @@ def generate_unique_key(source: str, trans_date: str, amount: Decimal,
 # ── 来源自动识别 ──────────────────────────────────────
 
 SOURCE_FILENAME_PATTERNS = {
-    'alipay': ['支付宝', 'alipay'],
-    'jd': ['京东', 'jd'],
+    'alipay': ['支付宝', 'alipay', '余额宝'],
+    'jd': ['京东', 'jd', '白条'],
     'meituan': ['美团', 'meituan'],
-    'wechat': ['微信', 'wechat'],
-    'douyin': ['抖音', 'douyin'],
+    'wechat': ['微信', 'wechat', '零钱'],
+    'douyin': ['抖音', 'douyin', '月付'],
     'bocom_debit': ['交通银行', '交行', 'bocom'],
     'cmb_debit': ['招商银行', '招商储蓄', '招行储蓄', 'cmb'],
     'cib_credit': ['中信', 'cib'],
@@ -43,6 +43,15 @@ PDF_CONTENT_SIGNATURES = {
 
 def detect_source(filename: str) -> str | None:
     """根据文件名自动识别来源，返回 source code 或 None"""
+    # 先清理文件名中的时间戳后缀（如 _20260629_123456）
+    import re
+    clean_name = re.sub(r'[_-]?\d{8}[_-]?\d{6}?', '', filename)
+    filename_lower = clean_name.lower()
+    for source, patterns in SOURCE_FILENAME_PATTERNS.items():
+        for pattern in patterns:
+            if pattern.lower() in filename_lower:
+                return source
+    # 兜底：用原始文件名再匹配一次
     filename_lower = filename.lower()
     for source, patterns in SOURCE_FILENAME_PATTERNS.items():
         for pattern in patterns:

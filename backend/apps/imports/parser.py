@@ -744,8 +744,7 @@ def parse_file(file_path: str, filename: str,
 
     # CSV 解析
     if ext == 'csv' and source in ('alipay', 'jd', 'meituan'):
-        with open(file_path, 'r', encoding='utf-8-sig') as f:
-            content = f.read()
+        content = _read_csv_content(file_path)
         parser = PARSER_MAP[source]
         return parser(content), source
 
@@ -761,11 +760,11 @@ def parse_file(file_path: str, filename: str,
     # PDF 解析
     if ext == 'pdf':
         import pdfplumber
-        with pdfplumber.open(file_path) as pdf:
-            pages = pdf.pages
         parser = PARSER_MAP.get(source)
         if not parser:
             raise ValueError(f'不支持的 PDF 来源: {source}')
+        with pdfplumber.open(file_path) as pdf:
+            pages = list(pdf.pages)  # 立即读取所有页面，避免 closed file 问题
         return parser(pages), source
 
     raise ValueError(f'不支持的文件格式: {ext} (来源: {source})')
@@ -848,3 +847,16 @@ def _extract_counterparty_from_desc(desc: str) -> str:
     if m:
         return m.group(1)
     return ''
+
+
+def _read_csv_content(file_path: str) -> str:
+    """读取 CSV 文件内容，自动尝试多种编码"""
+    for encoding in ['utf-8-sig', 'utf-8', 'gbk', 'gb2312', 'gb18030']:
+        try:
+            with open(file_path, 'r', encoding=encoding) as f:
+                return f.read()
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    # 最后兜底
+    with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+        return f.read()
