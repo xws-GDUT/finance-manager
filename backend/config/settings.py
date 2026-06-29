@@ -139,6 +139,19 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'https://finance-manager-web.onrender.com',
+    'https://finance-manager-web-o2hk.onrender.com',
+    'https://finance-manager-0j5p.onrender.com',
+]
+
+# Render 生产环境：允许所有 onrender.com 子域名的 CORS 请求
+import re as _re
+_cors_extra = os.environ.get('CORS_EXTRA_ORIGINS', '')
+if _cors_extra:
+    CORS_ALLOWED_ORIGINS.extend([o.strip() for o in _cors_extra.split(',') if o.strip()])
+
+# 动态允许 render.com 子域名（生产环境容错）
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^https://.*\.onrender\.com$',
 ]
 
 # ── 文件上传 ──────────────────────────────────────────
