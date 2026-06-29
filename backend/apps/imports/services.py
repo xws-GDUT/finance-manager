@@ -98,25 +98,73 @@ class ImportService:
 
         result['total_rows'] = len(parsed_rows)
 
-        # 2. 分批处理：先用单事务批量创建交易，再批量应用规则
-        created_txs = []
+        # 2. 批量去重 + 批量创建（减少内存和DB压力）
+        # 先一次性查询所有已存在的 unique_key
+        keys = [self._generate_key(source, r) for r in parsed_rows]
+        existing_keys = set(
+            self.Transaction.objects
+            .filter(unique_key__in=keys)
+            .values_list('unique_key', flat=True)
+        )
+
+        # 预加载账户（避免每条都查）
+        account = self._match_or_create_account(source)
+
+        # 分批批量创建（每批最多 200 条，避免单次 SQL 过大）
+        BATCH_SIZE = 200
+        to_create = []
         for row in parsed_rows:
             try:
-                tx = self._create_transaction(row, source, result)
-                if tx:
-                    created_txs.append(tx)
+                key = self._generate_key(source, row)
+                if key in existing_keys:
+                    result['skipped_rows'] += 1
+                    continue
+
+                category_id = self.categorizer.classify(
+                    row.get('description', ''),
+                    row.get('merchant', ''),
+                    row.get('trans_type', ''),
+                    row.get('direction', 'expense'),
+                )
+
+                to_create.append(self.Transaction(
+                    trans_date=row['trans_date'],
+                    amount=row['amount'],
+                    direction=row['direction'],
+                    source=source,
+                    status='unknown',
+                    trans_type=row.get('trans_type', ''),
+                    description=row.get('description', ''),
+                    merchant=row.get('merchant', ''),
+                    counterparty=row.get('counterparty', ''),
+                    payment_method=row.get('payment_method', ''),
+                    payment_channel=row.get('payment_channel', ''),
+                    unique_key=key,
+                    category_id=category_id,
+                    account=account,
+                ))
+
+                # 达到批次大小，批量写入
+                if len(to_create) >= BATCH_SIZE:
+                    created = self.Transaction.objects.bulk_create(to_create)
+                    result['imported_rows'] += len(created)
+                    created_txs = list(created)
+                    # 立即应用规则并释放
+                    self._apply_rules_batch(created_txs)
+                    to_create = []
+
             except Exception as e:
                 result['error_rows'] += 1
                 if len(result['errors']) < 10:
                     result['errors'].append(f"行处理失败: {str(e)[:100]}")
 
-        # 3. 批量应用规则（在独立事务中）
-        if created_txs:
-            try:
-                self._apply_rules_batch(created_txs)
-            except Exception as e:
-                if len(result['errors']) < 10:
-                    result['errors'].append(f"规则应用失败: {str(e)[:100]}")
+        # 处理剩余批次
+        if to_create:
+            created = self.Transaction.objects.bulk_create(to_create)
+            result['imported_rows'] += len(created)
+            self._apply_rules_batch(list(created))
+
+        # 3. 移除旧的批量规则应用步骤（已在分批中处理）
 
         # 4. 记录导入日志
         self._log_import(filename, source, result, os.path.getsize(file_path))
