@@ -80,6 +80,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': str(DATA_DIR / 'finance.db'),
+        'OPTIONS': {
+            'timeout': 30,  # 等待锁超时（秒）
+        },
     }
 }
 

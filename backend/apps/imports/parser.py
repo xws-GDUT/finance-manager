@@ -304,70 +304,63 @@ def parse_wechat_xlsx(worksheet) -> list[dict]:
 # ═══════════════════════════════════════════════════════════
 
 def parse_bocom_debit_pdf(pages) -> list[dict]:
-    """交通银行储蓄卡 PDF — 表格提取"""
+    """交通银行储蓄卡 PDF — 文本正则解析"""
     rows = []
-    for page in pages:
-        tables = page.extract_tables()
-        for table in tables:
-            for row_data in table:
-                if not row_data or not any(row_data):
-                    continue
-                parsed = _parse_bocom_row(row_data)
-                if parsed:
-                    rows.append(parsed)
+    text = '\n'.join(page.extract_text() or '' for page in pages)
+
+    # 交通银行格式：
+    # 序号 交易日期 交易时间 交易类型 借贷 交易金额 余额 对方账号 对方户名 摘要
+    # 1 2026-01-04 19:06:10 工资转存 贷 Cr 1,158.18 3,158.18 ...
+    pattern = re.compile(
+        r'(\d{1,4})\s+'
+        r'(\d{4}-\d{2}-\d{2})\s+'
+        r'(\d{2}:\d{2}:\d{2})\s+'
+        r'(.+?)\s+'
+        r'(贷|借)\s+Cr\s+'
+        r'([\d,]+\.\d{2})\s+'
+        r'([\d,]+\.\d{2})\s+'
+        r'(.+?)\s+'
+        r'(.+?)(?:\n|$)'
+    )
+
+    for match in pattern.finditer(text):
+        seq = match.group(1)
+        date = match.group(2)
+        time = match.group(3)
+        trans_type = match.group(4).strip()
+        dc = match.group(5)  # 贷 or 借
+        amount_raw = match.group(6).replace(',', '')
+        balance_raw = match.group(7).replace(',', '')
+        counterparty_account = match.group(8).strip()
+        description = match.group(9).strip()
+
+        try:
+            amount = Decimal(amount_raw)
+        except Exception:
+            continue
+
+        # 贷=收入, 借=支出
+        direction = 'income' if dc == '贷' else 'expense'
+
+        try:
+            parsed_date = _parse_date(date)
+        except ValueError:
+            continue
+
+        rows.append({
+            'trans_date': parsed_date,
+            'amount': amount,
+            'direction': direction,
+            'trans_type': trans_type,
+            'description': description,
+            'merchant': description,
+            'counterparty': counterparty_account,
+            'payment_method': '交通银行储蓄卡',
+            'payment_channel': _extract_payment_channel_from_text(trans_type + ' ' + description),
+            'source': 'bocom_debit',
+        })
+
     return rows
-
-
-def _parse_bocom_row(row_data: list) -> dict | None:
-    cleaned = [str(c).strip() if c else '' for c in row_data]
-    if not cleaned or '交易日期' in cleaned[0] or '记账日期' in cleaned[0]:
-        return None
-
-    date = ''
-    amount_raw = ''
-    for cell in cleaned:
-        if re.match(r'\d{4}[/-]\d{2}[/-]\d{2}', cell) and not date:
-            date = cell
-        elif re.match(r'^[+-]?\d[\d,]*\.?\d*$', cell):
-            amount_raw = cell
-
-    if not date or not amount_raw:
-        return None
-
-    amount_raw = amount_raw.replace(',', '').replace('+', '')
-    try:
-        amount = Decimal(abs(float(amount_raw)))
-    except ValueError:
-        return None
-
-    direction = 'expense' if amount_raw.startswith('-') else 'income'
-    texts = [c for c in cleaned if c and c != date and c != amount_raw]
-    description = ' '.join(texts) if texts else ''
-    counterparty = texts[0] if texts else ''
-
-    try:
-        parsed_date = _parse_date(date)
-    except ValueError:
-        return None
-
-    return {
-        'trans_date': parsed_date, 'amount': amount, 'direction': direction,
-        'trans_type': _detect_bocom_type(description),
-        'description': description, 'merchant': counterparty,
-        'counterparty': counterparty,
-        'payment_method': '交通银行储蓄卡',
-        'payment_channel': _extract_payment_channel_from_text(description),
-        'source': 'bocom_debit',
-    }
-
-
-def _detect_bocom_type(desc: str) -> str:
-    for kw, tp in [('快捷支付', '快捷支付'), ('网上支付', '网上支付'),
-                   ('银联', '银联支付'), ('转账', '转账汇款'),
-                   ('代发工资', '代发工资'), ('还款', '还款')]:
-        if kw in desc:
-            return tp
-    return '其他'
 
 
 def parse_cmb_debit_pdf(pages) -> list[dict]:

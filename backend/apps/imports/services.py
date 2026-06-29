@@ -85,15 +85,15 @@ class ImportService:
 
         result['total_rows'] = len(parsed_rows)
 
-        # 2. 逐行处理
-        with db_transaction.atomic():
-            for row in parsed_rows:
-                try:
+        # 2. 逐行处理（每行独立事务，避免长事务锁表）
+        for row in parsed_rows:
+            try:
+                with db_transaction.atomic():
                     self._process_row(row, source, result)
-                except Exception as e:
-                    result['error_rows'] += 1
-                    if len(result['errors']) < 10:
-                        result['errors'].append(f"行处理失败: {str(e)[:100]}")
+            except Exception as e:
+                result['error_rows'] += 1
+                if len(result['errors']) < 10:
+                    result['errors'].append(f"行处理失败: {str(e)[:100]}")
 
         # 3. 记录导入日志
         self._log_import(filename, source, result, os.path.getsize(file_path))
