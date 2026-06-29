@@ -1,0 +1,44 @@
+# Render 部署配置 — 家庭财务管理系统
+# 文档: https://render.com/docs/blueprint-spec
+#
+# 数据持久化：使用 Render Persistent Disk（$1/月），SQLite 存储在 /data/finance.db
+
+services:
+  # ── 后端 Web Service ──────────────────────────
+  - type: web
+    name: finance-manager-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: 'False'
+      - key: DJANGO_ALLOWED_HOSTS
+        value: .onrender.com
+      - key: DATA_DIR
+        value: /data
+      - key: PYTHON_VERSION
+        value: '3.11.0'
+    disk:
+      name: finance-data
+      mountPath: /data
+      sizeGB: 1
+
+  # ── 前端静态站点 ──────────────────────────────
+  - type: web
+    name: finance-manager-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: VITE_API_BASE
+        value: https://finance-manager-api.onrender.com/api
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
