@@ -127,15 +127,16 @@ class ValidRuleEngine:
 
             for tx in txs:
                 total += 1
-                rule_id = self.match(tx)
+                old_rule_id = tx.valid_rule_id
+                new_rule_id = self.match(tx)
 
-                if rule_id is not None:
-                    tx.valid_rule_id = rule_id
-                    # 只更新 valid_rule，不改变 status（由外部流程统一处理）
-                    if tx.valid_rule_id != rule_id:
-                        tx.save(update_fields=['valid_rule_id'])
+                if new_rule_id is not None:
+                    if old_rule_id != new_rule_id:
+                        tx.valid_rule_id = new_rule_id
+                        tx.status = 'confirmed'
+                        tx.save(update_fields=['valid_rule_id', 'status'])
                         matched += 1
-                elif tx.valid_rule_id is not None:
+                elif old_rule_id is not None:
                     tx.valid_rule_id = None
                     tx.save(update_fields=['valid_rule_id'])
 
