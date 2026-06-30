@@ -45,6 +45,7 @@ class ImportService:
         from apps.categories.models import Category
         from apps.accounts.models import Account
         from apps.imports.models import ImportLog
+        from apps.settlements.models import TransactionPair
 
         self.Transaction = Transaction
         self.ValidRule = ValidRule
@@ -57,8 +58,8 @@ class ImportService:
         self.valid_engine = ValidRuleEngine(ValidRule, Category)
         self.invalid_engine = InvalidRuleEngine(InvalidRule, Category)
         self.refund_engine = RefundPairEngine(
+            TransactionPair,
             Transaction,
-            Transaction,  # pair model 传入 Transaction（实际使用 TransactionPair）
         )
 
     def import_file(self, file_path: str, filename: str,
@@ -143,6 +144,7 @@ class ImportService:
                     category_id=category_id,
                     account=account,
                 ))
+                existing_keys.add(key)  # 防止同一批次内重复
 
                 # 达到批次大小，批量写入
                 if len(to_create) >= BATCH_SIZE:
