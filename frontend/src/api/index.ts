@@ -67,6 +67,9 @@ export const testValidRule = (data: Record<string, unknown>) =>
 export const applyValidRules = () =>
   api.post('/valid-rules/apply/').then(r => r.data);
 
+export const createDefaultValidRules = () =>
+  api.post<{ created: number; skipped: number }>('/valid-rules/create_defaults/').then(r => r.data);
+
 // ── 无效规则 ──────────────────────────────────────────
 
 export const fetchInvalidRules = () =>
@@ -86,6 +89,9 @@ export const testInvalidRule = (data: Record<string, unknown>) =>
 
 export const applyInvalidRules = () =>
   api.post('/invalid-rules/apply/').then(r => r.data);
+
+export const createDefaultInvalidRules = () =>
+  api.post<{ created: number; skipped: number }>('/invalid-rules/create_defaults/').then(r => r.data);
 
 // ── 退款配对 ──────────────────────────────────────────
 
