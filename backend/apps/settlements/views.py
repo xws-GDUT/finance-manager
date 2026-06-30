@@ -20,6 +20,7 @@ from apps.imports.settlement import SettlementEngine, AAScanner
 
 class RefundPairViewSet(viewsets.ModelViewSet):
     """退款配对管理"""
+    pagination_class = None  # 退款配对数据量小，不需要分页
     queryset = TransactionPair.objects.select_related(
         'expense_tx', 'refund_tx'
     ).all()
@@ -104,6 +105,7 @@ class RefundPairViewSet(viewsets.ModelViewSet):
 
 class SettlementGroupViewSet(viewsets.ModelViewSet):
     """垫付结算组管理"""
+    pagination_class = None  # 结算组数据量小，不需要分页
     queryset = SettlementGroup.objects.prefetch_related(
         'items__transaction'
     ).all()

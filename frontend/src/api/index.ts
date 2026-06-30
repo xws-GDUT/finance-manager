@@ -36,16 +36,16 @@ export const fetchFilterValues = () =>
 // ── 统计分析 ──────────────────────────────────────────
 
 export const fetchStatsOverview = () =>
-  api.get<StatsOverview>('/stats/overview').then(r => r.data);
+  api.get<StatsOverview>('/stats/overview/').then(r => r.data);
 
 export const fetchStatsMonthly = () =>
-  api.get<MonthlyStat[]>('/stats/monthly').then(r => r.data);
+  api.get<MonthlyStat[]>('/stats/monthly/').then(r => r.data);
 
 export const fetchStatsCategory = () =>
-  api.get<CategoryStat[]>('/stats/category').then(r => r.data);
+  api.get<CategoryStat[]>('/stats/category/').then(r => r.data);
 
 export const fetchStatsDaily = () =>
-  api.get<DailyStat[]>('/stats/daily').then(r => r.data);
+  api.get<DailyStat[]>('/stats/daily/').then(r => r.data);
 
 // ── 有效规则 ──────────────────────────────────────────
 
@@ -155,22 +155,22 @@ export const importFile = (file: File, source?: string) => {
   const formData = new FormData();
   formData.append('file', file);
   if (source) formData.append('source', source);
-  return api.post('/import/upload', formData).then(r => r.data);
+  return api.post('/import/upload/', formData).then(r => r.data);
 };
 
 export const importBatch = (files: File[]) => {
   const formData = new FormData();
   files.forEach(f => formData.append('files', f));
-  return api.post('/import/batch', formData).then(r => r.data);
+  return api.post('/import/batch/', formData).then(r => r.data);
 };
 
 export const fetchImportHistory = () =>
-  api.get<ImportLog[]>('/import/history').then(r => r.data);
+  api.get<ImportLog[]>('/import/history/').then(r => r.data);
 
 // ── 分类与账户 ────────────────────────────────────────
 
 export const fetchCategories = () =>
-  api.get<Category[]>('/categories').then(r => r.data);
+  api.get<Category[]>('/categories/').then(r => r.data);
 
 export const fetchAccounts = () =>
-  api.get<Account[]>('/accounts').then(r => r.data);
+  api.get<Account[]>('/accounts/').then(r => r.data);

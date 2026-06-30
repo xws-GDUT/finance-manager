@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Table, Button, Space, Tag, message, Modal, Descriptions, Collapse } from 'antd';
-import { SyncOutlined, ScanOutlined, PlusOutlined } from '@ant-design/icons';
+import { SyncOutlined, PlusOutlined } from '@ant-design/icons';
 import { fetchRefundPairs, autoPair, unpair, fetchAAScan, createAA } from '../api';
 import type { TransactionPair, AAScanResult } from '../types';
 
@@ -96,10 +96,7 @@ export default function RefundPairs() {
   return (
     <div>
       <Card title="退款配对" extra={
-        <Space>
-          <Button icon={<ScanOutlined />} onClick={handleAAScan}>AA 扫描</Button>
-          <Button type="primary" icon={<SyncOutlined />} onClick={handleAutoPair}>自动配对</Button>
-        </Space>
+        <Button type="primary" icon={<SyncOutlined />} onClick={handleAutoPair}>自动配对</Button>
       }>
         <Table columns={columns} dataSource={pairs} rowKey="id" loading={loading} size="middle"
           pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 对` }} />
