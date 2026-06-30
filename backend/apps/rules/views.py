@@ -18,6 +18,7 @@ class ValidRuleViewSet(viewsets.ModelViewSet):
     """有效规则 CRUD"""
     queryset = ValidRule.objects.all()
     serializer_class = ValidRuleSerializer
+    pagination_class = None  # 规则数据量小，不需要分页
 
     @action(detail=False, methods=['post'])
     def apply(self, request):
@@ -46,6 +47,7 @@ class InvalidRuleViewSet(viewsets.ModelViewSet):
     """无效规则 CRUD"""
     queryset = InvalidRule.objects.all()
     serializer_class = InvalidRuleSerializer
+    pagination_class = None  # 规则数据量小，不需要分页
 
     @action(detail=False, methods=['post'])
     def apply(self, request):
