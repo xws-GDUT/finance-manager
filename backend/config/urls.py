@@ -47,10 +47,10 @@ urlpatterns = [
     path('api/settlements/', include('apps.settlements.settlement_urls')),
 
     # 分类管理（1 端点）
-    path('api/categories', include('apps.categories.urls')),
+    path('api/categories/', include('apps.categories.urls')),
 
     # 账户管理（1 端点）
-    path('api/accounts', include('apps.accounts.urls')),
+    path('api/accounts/', include('apps.accounts.urls')),
 
     # 前端静态资源（JS/CSS/图片等）
     re_path(r'^assets/(?P<path>.*)$', serve_frontend_assets, name='frontend-assets'),
