@@ -3,7 +3,6 @@ Django 项目配置 — 家庭财务管理系统
 """
 import os
 from pathlib import Path
-import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -41,7 +40,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # Whitenoise：仅在非 DEBUG 模式（生产环境）启用
+] + (['whitenoise.middleware.WhiteNoiseMiddleware'] if not DEBUG else []) + [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -81,6 +81,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': str(DATA_DIR / 'finance.db'),
+        'OPTIONS': {
+            'timeout': 30,  # 等待锁超时（秒）
+        },
     }
 }
 
@@ -102,9 +105,12 @@ USE_TZ = True
 
 # ── 静态文件 ──────────────────────────────────────────
 
-STATIC_URL = '/static/'
+STATIC_URL = '/assets/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# 禁用 APPEND_SLASH，避免 SPA 路由和静态文件路径问题
+APPEND_SLASH = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -127,12 +133,25 @@ REST_FRAMEWORK = {
     ],
 }
 
-# ── CORS（开发环境允许前端跨域）──────────────────────
+# ── CORS ─────────────────────────────────────────────
 
-CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'https://finance-manager-web.onrender.com',
+    'https://finance-manager-web-o2hk.onrender.com',
+    'https://finance-manager-0j5p.onrender.com',
+]
+
+# Render 生产环境：允许所有 onrender.com 子域名的 CORS 请求
+import re as _re
+_cors_extra = os.environ.get('CORS_EXTRA_ORIGINS', '')
+if _cors_extra:
+    CORS_ALLOWED_ORIGINS.extend([o.strip() for o in _cors_extra.split(',') if o.strip()])
+
+# 动态允许 render.com 子域名（生产环境容错）
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^https://.*\.onrender\.com$',
 ]
 
 # ── 文件上传 ──────────────────────────────────────────

@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Table, Card, Space, Input, Select, DatePicker, Tag,
   Button, Modal, TreeSelect, message, Popconfirm, Tooltip,
+  Checkbox,
 } from 'antd';
-import { EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
+import { EditOutlined, DeleteOutlined, SearchOutlined, FilterOutlined } from '@ant-design/icons';
+import type { ColumnsType, FilterValue, ColumnType } from 'antd/es/table';
+import type { FilterDropdownProps } from 'antd/es/table/interface';
 import dayjs from 'dayjs';
 import {
   fetchTransactions, fetchFilterValues,
@@ -14,6 +16,91 @@ import {
 import type { Transaction, FilterValues, Category } from '../types';
 
 const { RangePicker } = DatePicker;
+
+/** 通用的表头筛选下拉组件 */
+function FilterDropdown({
+  options,
+  selectedValues,
+  onChange,
+  placeholder,
+}: {
+  options: { value: string | number; label: string; count?: number }[];
+  selectedValues: (string | number)[];
+  onChange: (values: (string | number)[]) => void;
+  placeholder?: string;
+}) {
+  const [search, setSearch] = useState('');
+  const allValues = useMemo(() => options.map(o => o.value), [options]);
+
+  // 搜索结果 — 筛选后的选项
+  const filteredOptions = useMemo(() => {
+    if (!search) return options;
+    const kw = search.toLowerCase();
+    return options.filter(o => o.label.toLowerCase().includes(kw));
+  }, [options, search]);
+
+  // 筛选后的全部值（用于"全选"）
+  const filteredAllValues = useMemo(() => filteredOptions.map(o => o.value), [filteredOptions]);
+
+  // 筛选后是否全选
+  const isAllFilteredSelected = filteredAllValues.length > 0 && filteredAllValues.every(v => selectedValues.includes(v));
+  // 是否部分选中
+  const isIndeterminate = selectedValues.length > 0 && !isAllFilteredSelected;
+
+  const toggleAll = () => {
+    if (isAllFilteredSelected) {
+      // 取消全选：移除当前筛选结果中的所有值
+      onChange(selectedValues.filter(v => !filteredAllValues.includes(v)));
+    } else {
+      // 全选：合并当前筛选结果中的所有值（保留已选的不在当前筛选中的值）
+      const newSet = new Set([...selectedValues, ...filteredAllValues]);
+      onChange(Array.from(newSet));
+    }
+  };
+
+  return (
+    <div style={{ padding: 8, minWidth: 200, maxWidth: 300 }}>
+      <Input
+        placeholder={placeholder || '搜索...'}
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{ marginBottom: 8 }}
+        allowClear
+        size="small"
+        prefix={<SearchOutlined />}
+      />
+      <div style={{ marginBottom: 4, maxHeight: 240, overflowY: 'auto' }}>
+        <div
+          style={{ padding: '4px 8px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', fontWeight: 500 }}
+          onClick={toggleAll}
+        >
+          <Checkbox checked={isAllFilteredSelected} indeterminate={isIndeterminate}>
+            全选
+          </Checkbox>
+        </div>
+        <Checkbox.Group
+          value={selectedValues}
+          onChange={values => onChange(values as (string | number)[])}
+          style={{ width: '100%' }}
+        >
+          {filteredOptions.map(opt => (
+            <div key={String(opt.value)} style={{ padding: '2px 8px' }}>
+              <Checkbox value={opt.value}>
+                {opt.label}
+                {opt.count !== undefined && (
+                  <span style={{ color: '#999', marginLeft: 4, fontSize: 12 }}>({opt.count})</span>
+                )}
+              </Checkbox>
+            </div>
+          ))}
+        </Checkbox.Group>
+        {filteredOptions.length === 0 && search && (
+          <div style={{ padding: 16, textAlign: 'center', color: '#999' }}>无匹配结果</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Transactions() {
   const [data, setData] = useState<Transaction[]>([]);
@@ -27,9 +114,13 @@ export default function Transactions() {
   // 筛选状态
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
-  const [filterSources, setFilterSources] = useState<string[]>([]);
-  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
-  const [filterDirections, setFilterDirections] = useState<string[]>([]);
+
+  // 表头筛选值
+  const [categoryFilter, setCategoryFilter] = useState<(string | number)[]>([]);
+  const [transTypeFilter, setTransTypeFilter] = useState<(string | number)[]>([]);
+  const [sourceFilter, setSourceFilter] = useState<(string | number)[]>([]);
+  const [statusFilter, setStatusFilter] = useState<(string | number)[]>([]);
+  const [directionFilter, setDirectionFilter] = useState<(string | number)[]>([]);
 
   // 编辑 Modal
   const [editModal, setEditModal] = useState(false);
@@ -39,6 +130,9 @@ export default function Transactions() {
 
   // 排序
   const [sortOrder, setSortOrder] = useState<string>('-trans_date');
+
+  // 防抖 ref
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -51,9 +145,11 @@ export default function Transactions() {
       if (search) params.search = search;
       if (dateRange?.[0]) params.date_from = dateRange[0].format('YYYY-MM-DD');
       if (dateRange?.[1]) params.date_to = dateRange[1].format('YYYY-MM-DD');
-      if (filterSources.length) params.sources = filterSources.join(',');
-      if (filterStatuses.length) params.statuses = filterStatuses.join(',');
-      if (filterDirections.length) params.directions = filterDirections.join(',');
+      if (categoryFilter.length) params.categories = categoryFilter.join(',');
+      if (transTypeFilter.length) params.trans_types = transTypeFilter.join(',');
+      if (sourceFilter.length) params.sources = sourceFilter.join(',');
+      if (statusFilter.length) params.statuses = statusFilter.join(',');
+      if (directionFilter.length) params.directions = directionFilter.join(',');
 
       const res = await fetchTransactions(params);
       setData(res.results);
@@ -63,7 +159,7 @@ export default function Transactions() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, dateRange, filterSources, filterStatuses, filterDirections, sortOrder]);
+  }, [page, pageSize, search, dateRange, categoryFilter, transTypeFilter, sourceFilter, statusFilter, directionFilter, sortOrder]);
 
   useEffect(() => { loadData(); }, [loadData]);
   useEffect(() => {
@@ -126,6 +222,13 @@ export default function Transactions() {
       })),
     }));
 
+  // 表头筛选配置
+  const sourceOptions = useMemo(() => filters?.sources || [], [filters]);
+  const statusOptions = useMemo(() => filters?.statuses || [], [filters]);
+  const transTypeOptions = useMemo(() => filters?.trans_types || [], [filters]);
+  const categoryOptions = useMemo(() => filters?.categories || [], [filters]);
+  const directionOptions = useMemo(() => filters?.directions || [], [filters]);
+
   const columns: ColumnsType<Transaction> = [
     {
       title: '日期', dataIndex: 'trans_date', key: 'trans_date',
@@ -134,6 +237,19 @@ export default function Transactions() {
     },
     {
       title: '类型', dataIndex: 'direction', key: 'direction', width: 80,
+      filterDropdown: (props: FilterDropdownProps) => (
+        <FilterDropdown
+          options={directionOptions}
+          selectedValues={directionFilter}
+          onChange={(v) => { setDirectionFilter(v); setPage(1); }}
+          placeholder="搜索类型..."
+        />
+      ),
+      onFilter: () => true,
+      filtered: directionFilter.length > 0,
+      filterIcon: (filtered: boolean) => (
+        <FilterOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
+      ),
       render: (_: string, r: Transaction) => (
         <Tag color={r.direction === 'expense' ? 'red' : 'green'}>
           {r.direction_display}
@@ -142,6 +258,19 @@ export default function Transactions() {
     },
     {
       title: '分类', dataIndex: 'category_name', key: 'category', width: 130,
+      filterDropdown: (props: FilterDropdownProps) => (
+        <FilterDropdown
+          options={categoryOptions}
+          selectedValues={categoryFilter}
+          onChange={(v) => { setCategoryFilter(v); setPage(1); }}
+          placeholder="搜索分类..."
+        />
+      ),
+      onFilter: () => true,
+      filtered: categoryFilter.length > 0,
+      filterIcon: (filtered: boolean) => (
+        <FilterOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
+      ),
       render: (_: string, r: Transaction) => (
         <span>{r.category_icon} {r.category_name || '未分类'}</span>
       ),
@@ -149,6 +278,19 @@ export default function Transactions() {
     {
       title: '交易类型', dataIndex: 'trans_type', key: 'trans_type', width: 100,
       ellipsis: true,
+      filterDropdown: (props: FilterDropdownProps) => (
+        <FilterDropdown
+          options={transTypeOptions}
+          selectedValues={transTypeFilter}
+          onChange={(v) => { setTransTypeFilter(v); setPage(1); }}
+          placeholder="搜索交易类型..."
+        />
+      ),
+      onFilter: () => true,
+      filtered: transTypeFilter.length > 0,
+      filterIcon: (filtered: boolean) => (
+        <FilterOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
+      ),
     },
     {
       title: '商户/描述', key: 'desc', width: 220, ellipsis: true,
@@ -176,9 +318,35 @@ export default function Transactions() {
     },
     {
       title: '来源', dataIndex: 'source_display', key: 'source', width: 110,
+      filterDropdown: (props: FilterDropdownProps) => (
+        <FilterDropdown
+          options={sourceOptions}
+          selectedValues={sourceFilter}
+          onChange={(v) => { setSourceFilter(v); setPage(1); }}
+          placeholder="搜索来源..."
+        />
+      ),
+      onFilter: () => true,
+      filtered: sourceFilter.length > 0,
+      filterIcon: (filtered: boolean) => (
+        <FilterOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
+      ),
     },
     {
       title: '状态', dataIndex: 'status', key: 'status', width: 80,
+      filterDropdown: (props: FilterDropdownProps) => (
+        <FilterDropdown
+          options={statusOptions}
+          selectedValues={statusFilter}
+          onChange={(v) => { setStatusFilter(v); setPage(1); }}
+          placeholder="搜索状态..."
+        />
+      ),
+      onFilter: () => true,
+      filtered: statusFilter.length > 0,
+      filterIcon: (filtered: boolean) => (
+        <FilterOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
+      ),
       render: (s: string) => {
         const m: Record<string, { color: string; text: string }> = {
           confirmed: { color: 'green', text: '有效' },
@@ -222,7 +390,10 @@ export default function Transactions() {
           placeholder="搜索描述/商户/对手方..."
           prefix={<SearchOutlined />}
           value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
+          onChange={e => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
           style={{ width: 240 }}
           allowClear
         />
@@ -231,42 +402,6 @@ export default function Transactions() {
           onChange={(v) => { setDateRange(v as any); setPage(1); }}
           allowClear
         />
-        {filters?.sources && (
-          <Select
-            mode="multiple"
-            placeholder="来源"
-            style={{ minWidth: 120 }}
-            options={filters.sources}
-            value={filterSources}
-            onChange={(v) => { setFilterSources(v); setPage(1); }}
-            allowClear
-            maxTagCount={1}
-          />
-        )}
-        {filters?.statuses && (
-          <Select
-            mode="multiple"
-            placeholder="状态"
-            style={{ minWidth: 100 }}
-            options={filters.statuses}
-            value={filterStatuses}
-            onChange={(v) => { setFilterStatuses(v); setPage(1); }}
-            allowClear
-            maxTagCount={1}
-          />
-        )}
-        {filters?.directions && (
-          <Select
-            mode="multiple"
-            placeholder="方向"
-            style={{ minWidth: 100 }}
-            options={filters.directions}
-            value={filterDirections}
-            onChange={(v) => { setFilterDirections(v); setPage(1); }}
-            allowClear
-            maxTagCount={1}
-          />
-        )}
         <Button onClick={loadData}>刷新</Button>
       </Space>
 

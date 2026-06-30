@@ -3,7 +3,7 @@ import {
   Card, Table, Button, Space, Tag, Switch, Modal, Input, InputNumber,
   Select, message, Popconfirm,
 } from 'antd';
-import { PlusOutlined, PlayCircleOutlined, ExperimentOutlined } from '@ant-design/icons';
+import { PlusOutlined, PlayCircleOutlined, ExperimentOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { ValidRule, InvalidRule } from '../types';
 
 interface Props {
@@ -15,6 +15,7 @@ interface Props {
   deleteFn: (id: number) => Promise<any>;
   testFn: (data: any) => Promise<{ matched_count: number }>;
   applyFn: () => Promise<any>;
+  createDefaultsFn: () => Promise<{ created: number; skipped: number }>;
 }
 
 const SOURCE_OPTIONS = [
@@ -25,7 +26,7 @@ const SOURCE_OPTIONS = [
   { value: 'cmb_credit', label: '招商银行信用卡' },
 ];
 
-export default function RuleManager({ type, title, fetchFn, createFn, updateFn, deleteFn, testFn, applyFn }: Props) {
+export default function RuleManager({ type, title, fetchFn, createFn, updateFn, deleteFn, testFn, applyFn, createDefaultsFn }: Props) {
   const [data, setData] = useState<(ValidRule | InvalidRule)[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -103,6 +104,14 @@ export default function RuleManager({ type, title, fetchFn, createFn, updateFn, 
     } catch { message.error('应用失败'); }
   };
 
+  const handleCreateDefaults = async () => {
+    try {
+      const res = await createDefaultsFn();
+      message.success(`默认规则创建完成：新增 ${res.created} 条，跳过 ${res.skipped} 条`);
+      loadData();
+    } catch { message.error('创建默认规则失败'); }
+  };
+
   const updateField = (field: string, value: any) => {
     setEditing(prev => ({ ...prev, [field]: value }));
   };
@@ -142,6 +151,7 @@ export default function RuleManager({ type, title, fetchFn, createFn, updateFn, 
       title={title}
       extra={
         <Space>
+          <Button icon={<ThunderboltOutlined />} onClick={handleCreateDefaults}>创建默认规则</Button>
           <Button icon={<ExperimentOutlined />} onClick={handleApply}>重新应用</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新建规则</Button>
         </Space>

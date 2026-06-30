@@ -1,7 +1,7 @@
 import RuleManager from '../components/RuleManager';
 import {
   fetchValidRules, createValidRule, updateValidRule, deleteValidRule,
-  testValidRule, applyValidRules,
+  testValidRule, applyValidRules, createDefaultValidRules,
 } from '../api';
 
 export default function ValidRules() {
@@ -15,6 +15,7 @@ export default function ValidRules() {
       deleteFn={deleteValidRule}
       testFn={testValidRule}
       applyFn={applyValidRules}
+      createDefaultsFn={createDefaultValidRules}
     />
   );
 }

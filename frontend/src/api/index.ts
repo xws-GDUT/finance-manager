@@ -8,8 +8,11 @@ import type {
   Category, Account, ImportLog,
 } from '../types';
 
+// 本地开发通过 Vite proxy 转发 /api，Render 部署通过 VITE_API_BASE 指定后端地址
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
   timeout: 30000,
 });
 
@@ -22,7 +25,7 @@ export const fetchTransaction = (id: number) =>
   api.get<Transaction>(`/transactions/${id}/`).then(r => r.data);
 
 export const updateTransaction = (id: number, data: Partial<Transaction>) =>
-  api.put<Transaction>(`/transactions/${id}/`, data).then(r => r.data);
+  api.patch<Transaction>(`/transactions/${id}/`, data).then(r => r.data);
 
 export const deleteTransaction = (id: number) =>
   api.delete(`/transactions/${id}/`);
@@ -33,27 +36,27 @@ export const fetchFilterValues = () =>
 // ── 统计分析 ──────────────────────────────────────────
 
 export const fetchStatsOverview = () =>
-  api.get<StatsOverview>('/stats/overview').then(r => r.data);
+  api.get<StatsOverview>('/stats/overview/').then(r => r.data);
 
 export const fetchStatsMonthly = () =>
-  api.get<MonthlyStat[]>('/stats/monthly').then(r => r.data);
+  api.get<MonthlyStat[]>('/stats/monthly/').then(r => r.data);
 
 export const fetchStatsCategory = () =>
-  api.get<CategoryStat[]>('/stats/category').then(r => r.data);
+  api.get<CategoryStat[]>('/stats/category/').then(r => r.data);
 
 export const fetchStatsDaily = () =>
-  api.get<DailyStat[]>('/stats/daily').then(r => r.data);
+  api.get<DailyStat[]>('/stats/daily/').then(r => r.data);
 
 // ── 有效规则 ──────────────────────────────────────────
 
 export const fetchValidRules = () =>
-  api.get<ValidRule[]>('/valid-rules/').then(r => r.data);
+  api.get<{ results: ValidRule[] }>('/valid-rules/').then(r => r.data.results);
 
 export const createValidRule = (data: Partial<ValidRule>) =>
   api.post<ValidRule>('/valid-rules/', data).then(r => r.data);
 
 export const updateValidRule = (id: number, data: Partial<ValidRule>) =>
-  api.put<ValidRule>(`/valid-rules/${id}/`, data).then(r => r.data);
+  api.patch<ValidRule>(`/valid-rules/${id}/`, data).then(r => r.data);
 
 export const deleteValidRule = (id: number) =>
   api.delete(`/valid-rules/${id}/`);
@@ -64,16 +67,19 @@ export const testValidRule = (data: Record<string, unknown>) =>
 export const applyValidRules = () =>
   api.post('/valid-rules/apply/').then(r => r.data);
 
+export const createDefaultValidRules = () =>
+  api.post<{ created: number; skipped: number }>('/valid-rules/create_defaults/').then(r => r.data);
+
 // ── 无效规则 ──────────────────────────────────────────
 
 export const fetchInvalidRules = () =>
-  api.get<InvalidRule[]>('/invalid-rules/').then(r => r.data);
+  api.get<{ results: InvalidRule[] }>('/invalid-rules/').then(r => r.data.results);
 
 export const createInvalidRule = (data: Partial<InvalidRule>) =>
   api.post<InvalidRule>('/invalid-rules/', data).then(r => r.data);
 
 export const updateInvalidRule = (id: number, data: Partial<InvalidRule>) =>
-  api.put<InvalidRule>(`/invalid-rules/${id}/`, data).then(r => r.data);
+  api.patch<InvalidRule>(`/invalid-rules/${id}/`, data).then(r => r.data);
 
 export const deleteInvalidRule = (id: number) =>
   api.delete(`/invalid-rules/${id}/`);
@@ -84,10 +90,13 @@ export const testInvalidRule = (data: Record<string, unknown>) =>
 export const applyInvalidRules = () =>
   api.post('/invalid-rules/apply/').then(r => r.data);
 
+export const createDefaultInvalidRules = () =>
+  api.post<{ created: number; skipped: number }>('/invalid-rules/create_defaults/').then(r => r.data);
+
 // ── 退款配对 ──────────────────────────────────────────
 
 export const fetchRefundPairs = () =>
-  api.get<TransactionPair[]>('/refund-pairs/').then(r => r.data);
+  api.get<{ results: TransactionPair[] }>('/refund-pairs/').then(r => r.data.results);
 
 export const autoPair = () =>
   api.post('/refund-pairs/auto/').then(r => r.data);
@@ -111,7 +120,7 @@ export const createAA = (receiptIds: number[], expenseId: number, groupName?: st
 // ── 垫付结算 ──────────────────────────────────────────
 
 export const fetchSettlements = () =>
-  api.get<SettlementGroup[]>('/settlements/').then(r => r.data);
+  api.get<{ results: SettlementGroup[] }>('/settlements/').then(r => r.data.results);
 
 export const fetchSettlement = (id: number) =>
   api.get<SettlementGroup>(`/settlements/${id}/`).then(r => r.data);
@@ -146,22 +155,22 @@ export const importFile = (file: File, source?: string) => {
   const formData = new FormData();
   formData.append('file', file);
   if (source) formData.append('source', source);
-  return api.post('/import/upload', formData).then(r => r.data);
+  return api.post('/import/upload/', formData).then(r => r.data);
 };
 
 export const importBatch = (files: File[]) => {
   const formData = new FormData();
   files.forEach(f => formData.append('files', f));
-  return api.post('/import/batch', formData).then(r => r.data);
+  return api.post('/import/batch/', formData).then(r => r.data);
 };
 
 export const fetchImportHistory = () =>
-  api.get<ImportLog[]>('/import/history').then(r => r.data);
+  api.get<ImportLog[]>('/import/history/').then(r => r.data);
 
 // ── 分类与账户 ────────────────────────────────────────
 
 export const fetchCategories = () =>
-  api.get<Category[]>('/categories').then(r => r.data);
+  api.get<Category[]>('/categories/').then(r => r.data);
 
 export const fetchAccounts = () =>
-  api.get<Account[]>('/accounts').then(r => r.data);
+  api.get<Account[]>('/accounts/').then(r => r.data);
