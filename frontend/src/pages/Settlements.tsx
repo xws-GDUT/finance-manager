@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import {
-  Card, Table, Button, Space, Tag, Modal, Input, message, Popconfirm,
+  Card, Table, Button, Space, Tag, Modal, Input, message, Popconfirm, Collapse,
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, ScanOutlined } from '@ant-design/icons';
 import {
   fetchSettlements, createSettlement, deleteSettlement,
   closeSettlement, reopenSettlement,
+  fetchAAScan, createAA,
 } from '../api';
-import type { SettlementGroup } from '../types';
+import type { SettlementGroup, AAScanResult } from '../types';
 
 export default function Settlements() {
   const [data, setData] = useState<SettlementGroup[]>([]);
@@ -21,6 +22,11 @@ export default function Settlements() {
   // 详情 Modal
   const [detailOpen, setDetailOpen] = useState(false);
   const [detail, setDetail] = useState<SettlementGroup | null>(null);
+
+  // 自动匹配（AA 扫描）
+  const [aaResults, setAaResults] = useState<AAScanResult[]>([]);
+  const [aaOpen, setAaOpen] = useState(false);
+  const [aaLoading, setAaLoading] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -60,6 +66,25 @@ export default function Settlements() {
   const viewDetail = (item: SettlementGroup) => {
     setDetail(item);
     setDetailOpen(true);
+  };
+
+  const handleAAScan = async () => {
+    setAaLoading(true);
+    try {
+      const res = await fetchAAScan();
+      setAaResults(res);
+      setAaOpen(true);
+    } catch { message.error('扫描失败'); }
+    finally { setAaLoading(false); }
+  };
+
+  const handleAACreate = async (expenseId: number, receiptIds: number[]) => {
+    try {
+      await createAA(receiptIds, expenseId);
+      message.success('AA 结算组已创建');
+      setAaOpen(false);
+      loadData();
+    } catch { message.error('创建失败'); }
   };
 
   const columns = [
@@ -133,7 +158,10 @@ export default function Settlements() {
   return (
     <div>
       <Card title="垫付结算" extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>新建结算组</Button>
+        <Space>
+          <Button icon={<ScanOutlined />} loading={aaLoading} onClick={handleAAScan}>自动匹配</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>新建结算组</Button>
+        </Space>
       }>
         <Table columns={columns} dataSource={data} rowKey="id" loading={loading} size="middle"
           pagination={false} />
@@ -166,6 +194,39 @@ export default function Settlements() {
             <Table columns={itemColumns} dataSource={detail.items} rowKey="id"
               pagination={false} size="small" />
           </div>
+        )}
+      </Modal>
+
+      <Modal title="自动匹配 — AA 群收款扫描" open={aaOpen} onCancel={() => setAaOpen(false)} footer={null} width={700}>
+        {aaResults.length === 0 ? (
+          <p>未发现 AA 群收款场景</p>
+        ) : (
+          <Collapse items={aaResults.map((r, i) => ({
+            key: String(i),
+            label: `AA 场景 #${i + 1} - 总收款 ¥${Number(r.total_receipt).toLocaleString()}`,
+            children: (
+              <div>
+                <div style={{ marginBottom: 12 }}>
+                  <strong>群收款：</strong>
+                  {r.receipts.map(rc => (
+                    <Tag key={rc.id} color="green">+¥{Number(rc.amount).toLocaleString()} {rc.date}</Tag>
+                  ))}
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <strong>建议配对：</strong>
+                  {r.suggested_pairs.map(sp => (
+                    <div key={sp.expense_id} style={{ margin: '8px 0', padding: 8, background: '#fafafa', borderRadius: 4 }}>
+                      <div>消费：-¥{Number(sp.expense_amount).toLocaleString()} ({sp.expense_desc}) - 匹配率：{(sp.ratio * 100).toFixed(0)}%</div>
+                      <Button type="primary" size="small" icon={<PlusOutlined />}
+                        onClick={() => handleAACreate(sp.expense_id, r.receipts.map(rc => rc.id))}>
+                        创建 AA 结算
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ),
+          }))} />
         )}
       </Modal>
     </div>

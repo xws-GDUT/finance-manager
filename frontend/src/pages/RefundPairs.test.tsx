@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RefundPairs from './RefundPairs';
-import { fetchRefundPairs, autoPair, unpair, fetchAAScan, createAA } from '../api';
+import { fetchRefundPairs, autoPair, unpair } from '../api';
 
 vi.mock('../api');
 vi.mock('react-router-dom', () => ({
@@ -15,8 +15,6 @@ vi.mock('react-router-dom', () => ({
 const mockFetchRefundPairs = vi.mocked(fetchRefundPairs);
 const mockAutoPair = vi.mocked(autoPair);
 const mockUnpair = vi.mocked(unpair);
-const mockFetchAAScan = vi.mocked(fetchAAScan);
-const mockCreateAA = vi.mocked(createAA);
 
 const mockPair = (overrides = {}) => ({
   id: 1,
@@ -37,30 +35,12 @@ const mockPair = (overrides = {}) => ({
   ...overrides,
 });
 
-const mockAAScanResult = [
-  {
-    receipts: [{ id: 1, date: '2025-06-15', amount: '30', description: '收款1' }],
-    total_receipt: '30',
-    candidate_expenses: [{ id: 10, date: '2025-06-15', amount: '30', description: '午餐' }],
-    suggested_pairs: [{
-      expense_id: 10,
-      expense_date: '2025-06-15',
-      expense_amount: '30',
-      expense_desc: '午餐',
-      receipt_total: '30',
-      ratio: 0.95,
-    }],
-  },
-];
-
 describe('RefundPairs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetchRefundPairs.mockResolvedValue([mockPair()]);
     mockAutoPair.mockResolvedValue({ paired: 5, skipped: 2 });
     mockUnpair.mockResolvedValue(undefined as any);
-    mockFetchAAScan.mockResolvedValue(mockAAScanResult);
-    mockCreateAA.mockResolvedValue({});
   });
 
   // ── 加载配对列表 ──
@@ -174,81 +154,6 @@ describe('RefundPairs', () => {
     }
   });
 
-  // ── AA 扫描按钮 ──
-  it('should render AA scan button and handle click', async () => {
-    render(<RefundPairs />);
-
-    await waitFor(() => {
-      expect(screen.getByText('AA 扫描')).toBeInTheDocument();
-    });
-
-    const aaScanBtn = screen.getByText('AA 扫描');
-    await userEvent.click(aaScanBtn);
-
-    await waitFor(() => {
-      expect(mockFetchAAScan).toHaveBeenCalled();
-    });
-  });
-
-  // ── AA 扫描结果 Modal ──
-  it('should display AA scan results in modal', async () => {
-    render(<RefundPairs />);
-
-    await waitFor(() => {
-      expect(screen.getByText('AA 扫描')).toBeInTheDocument();
-    });
-
-    const aaScanBtn = screen.getByText('AA 扫描');
-    await userEvent.click(aaScanBtn);
-
-    await waitFor(() => {
-      const modalTitle = document.querySelectorAll('.ant-modal-title');
-      // AA 扫描 Modal 标题是 "AA 群收款扫描"
-      const aaTitle = Array.from(modalTitle).find(el => el.textContent === 'AA 群收款扫描');
-      expect(aaTitle).toBeInTheDocument();
-    });
-  });
-
-  // ── AA 扫描空结果 ──
-  it('should show empty AA scan result message', async () => {
-    mockFetchAAScan.mockResolvedValue([]);
-
-    render(<RefundPairs />);
-
-    await waitFor(() => {
-      expect(screen.getByText('AA 扫描')).toBeInTheDocument();
-    });
-
-    const aaScanBtn = screen.getByText('AA 扫描');
-    await userEvent.click(aaScanBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText('未发现 AA 群收款场景')).toBeInTheDocument();
-    });
-  });
-
-  // ── AA 创建结算 ──
-  it('should create AA settlement', async () => {
-    render(<RefundPairs />);
-
-    await waitFor(() => {
-      expect(screen.getByText('AA 扫描')).toBeInTheDocument();
-    });
-
-    const aaScanBtn = screen.getByText('AA 扫描');
-    await userEvent.click(aaScanBtn);
-
-    // 等待 AA Modal 出现
-    await waitFor(() => {
-      const modalTitles = document.querySelectorAll('.ant-modal-title');
-      const aaTitle = Array.from(modalTitles).find(el => el.textContent === 'AA 群收款扫描');
-      expect(aaTitle).toBeInTheDocument();
-    });
-
-    // 验证扫描结果在 Modal 中
-    expect(mockFetchAAScan).toHaveBeenCalled();
-  });
-
   // ── 得分颜色 >=80 绿色 ──
   it('should render high score in green', async () => {
     mockFetchRefundPairs.mockResolvedValue([mockPair({ match_score: 95 })]);
@@ -355,30 +260,6 @@ describe('RefundPairs', () => {
     });
   });
 
-  // ── 关闭 AA 扫描 Modal ──
-  it('should close AA scan modal', async () => {
-    render(<RefundPairs />);
-
-    await waitFor(() => {
-      expect(screen.getByText('AA 扫描')).toBeInTheDocument();
-    });
-
-    const aaScanBtn = screen.getByText('AA 扫描');
-    await userEvent.click(aaScanBtn);
-
-    await waitFor(() => {
-      const modalTitles = document.querySelectorAll('.ant-modal-title');
-      const aaTitle = Array.from(modalTitles).find(el => el.textContent === 'AA 群收款扫描');
-      expect(aaTitle).toBeInTheDocument();
-    });
-
-    // 关闭 AA Modal（第二个 Modal 的关闭按钮）
-    const closeBtns = document.querySelectorAll('.ant-modal-close');
-    if (closeBtns.length > 0) {
-      await userEvent.click(closeBtns[closeBtns.length - 1] as HTMLElement);
-    }
-  });
-
   // ── handleAutoPair catch ──
   it('should handle auto pair error gracefully', async () => {
     mockAutoPair.mockRejectedValue(new Error('配对失败'));
@@ -412,83 +293,6 @@ describe('RefundPairs', () => {
 
     await waitFor(() => {
       expect(mockUnpair).toHaveBeenCalledWith(1);
-    });
-  });
-
-  // ── handleAAScan catch ──
-  it('should handle AA scan error gracefully', async () => {
-    mockFetchAAScan.mockRejectedValue(new Error('扫描失败'));
-    render(<RefundPairs />);
-
-    await waitFor(() => {
-      expect(screen.getByText('AA 扫描')).toBeInTheDocument();
-    });
-
-    const aaScanBtn = screen.getByText('AA 扫描');
-    await userEvent.click(aaScanBtn);
-
-    await waitFor(() => {
-      expect(mockFetchAAScan).toHaveBeenCalled();
-    });
-  });
-
-  // ── handleAACreate catch ──
-  it('should handle AA create error gracefully', async () => {
-    mockCreateAA.mockRejectedValue(new Error('创建失败'));
-    render(<RefundPairs />);
-
-    await waitFor(() => {
-      expect(screen.getByText('AA 扫描')).toBeInTheDocument();
-    });
-
-    const aaScanBtn = screen.getByText('AA 扫描');
-    await userEvent.click(aaScanBtn);
-
-    await waitFor(() => {
-      const modalTitles = document.querySelectorAll('.ant-modal-title');
-      const aaTitle = Array.from(modalTitles).find(el => el.textContent === 'AA 群收款扫描');
-      expect(aaTitle).toBeInTheDocument();
-    });
-
-    // 尝试展开 Collapse panel
-    const collapseHeaders = document.querySelectorAll('.ant-collapse-header');
-    if (collapseHeaders.length > 0) {
-      await userEvent.click(collapseHeaders[0] as HTMLElement);
-    }
-
-    // 尝试找到创建按钮
-    await waitFor(() => {
-      expect(mockFetchAAScan).toHaveBeenCalled();
-    });
-  });
-
-  // ── handleAACreate 成功 ──
-  it('should create AA settlement successfully', async () => {
-    mockCreateAA.mockResolvedValue({});
-    render(<RefundPairs />);
-
-    await waitFor(() => {
-      expect(screen.getByText('AA 扫描')).toBeInTheDocument();
-    });
-
-    const aaScanBtn = screen.getByText('AA 扫描');
-    await userEvent.click(aaScanBtn);
-
-    await waitFor(() => {
-      const modalTitles = document.querySelectorAll('.ant-modal-title');
-      const aaTitle = Array.from(modalTitles).find(el => el.textContent === 'AA 群收款扫描');
-      expect(aaTitle).toBeInTheDocument();
-    });
-
-    // 展开 Collapse
-    const collapseHeaders = document.querySelectorAll('.ant-collapse-header');
-    if (collapseHeaders.length > 0) {
-      await userEvent.click(collapseHeaders[0] as HTMLElement);
-    }
-
-    // 检查有建议的配对信息
-    await waitFor(() => {
-      expect(mockFetchAAScan).toHaveBeenCalled();
     });
   });
 
