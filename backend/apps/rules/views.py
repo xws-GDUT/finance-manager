@@ -55,24 +55,7 @@ DEFAULT_INVALID_RULES = [
      'keywords': '理财,基金,余额宝,蚂蚁财富,买入,赎回'},
     {'name': '微信理财', 'priority': 90, 'sources': 'wechat',
      'keywords': '零钱通,理财,基金,买入,赎回'},
-    # ── 转账/提现类（5条）── 内部资金划转
-    {'name': '银行转账', 'priority': 85, 'sources': 'bocom_debit,cmb_debit',
-     'keywords': '转账,汇款,云闪付'},
-    {'name': '支付宝转账', 'priority': 85, 'sources': 'alipay',
-     'keywords': '转账,提现,转入,转出'},
-    {'name': '招行微信转账', 'priority': 85, 'sources': 'cmb_debit',
-     'keywords': '微信转账'},
-    {'name': '微信红包/亲属卡', 'priority': 85, 'sources': 'wechat',
-     'keywords': '红包,亲属卡,群收款'},
-    {'name': '内部转账收入', 'priority': 80, 'directions': 'income',
-     'counterparties': '许万森,何永丰,同花顺,施金变,洗不完'},
-    # ── 指定对手方内部转账（3条）──
-    {'name': '转账给施金变', 'priority': 80, 'sources': 'bocom_debit,cmb_debit',
-     'counterparties': '施金变'},
-    {'name': '转账给许万森', 'priority': 80, 'sources': 'bocom_debit,cmb_debit',
-     'counterparties': '许万森'},
-    {'name': '转账给洗不完', 'priority': 80, 'sources': 'bocom_debit,cmb_debit',
-     'counterparties': '洗不完'},
+    
 ]
 
 
