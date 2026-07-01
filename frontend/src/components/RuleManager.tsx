@@ -124,10 +124,16 @@ export default function RuleManager({ type, title, fetchFn, createFn, updateFn, 
       render: (_: unknown, r: any) => <Switch checked={r.is_active} size="small" onChange={() => toggleActive(r)} />,
     },
     { title: '来源', dataIndex: 'sources', key: 'sources', width: 180, ellipsis: true,
-      render: (v: string) => v ? v.split(',').map((s: string) => <Tag key={s} style={{ marginBottom: 2 }}>{s}</Tag>) : <Tag>全部</Tag>,
+      render: (v: string) => v ? v.split(',').map((s: string) => {
+        const opt = SOURCE_OPTIONS.find(o => o.value === s);
+        return <Tag key={s} style={{ marginBottom: 2 }}>{opt ? opt.label : s}</Tag>;
+      }) : <Tag>全部</Tag>,
     },
     { title: '方向', dataIndex: 'directions', key: 'directions', width: 80,
-      render: (v: string) => v || '全部',
+      render: (v: string) => {
+        const DIRECTION_MAP: Record<string, string> = { expense: '支出', income: '收入' };
+        return v ? v.split(',').map((d: string) => DIRECTION_MAP[d] || d).join('、') : '全部';
+      },
     },
     { title: '关键词', dataIndex: 'keywords', key: 'keywords', width: 200, ellipsis: true,
       render: (v: string) => v || '-',
