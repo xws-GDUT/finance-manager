@@ -402,7 +402,17 @@ export default function Transactions() {
           onChange={(v) => { setDateRange(v as any); setPage(1); }}
           allowClear
         />
-        <Button onClick={loadData}>刷新</Button>
+        <Button onClick={() => {
+          setSearch('');
+          setDateRange(null);
+          setCategoryFilter([]);
+          setTransTypeFilter([]);
+          setSourceFilter([]);
+          setStatusFilter([]);
+          setDirectionFilter([]);
+          setSortOrder('-trans_date');
+          setPage(1);
+        }}>刷新</Button>
       </Space>
 
       <Table

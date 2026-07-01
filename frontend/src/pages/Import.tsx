@@ -13,6 +13,12 @@ import type { ImportLog } from '../types';
 
 const { Dragger } = Upload;
 
+const SOURCE_MAP: Record<string, string> = {
+  alipay: '支付宝', wechat: '微信支付', jd: '京东', meituan: '美团',
+  douyin: '抖音月付', bocom_debit: '交通银行储蓄卡', cmb_debit: '招商银行储蓄卡',
+  cib_credit: '中信信用卡', cmb_credit: '招商银行信用卡',
+};
+
 // 单个文件上传状态
 type FileStatus = 'pending' | 'uploading' | 'success' | 'error';
 
@@ -230,7 +236,9 @@ export default function Import() {
 
   const historyColumns = [
     { title: '文件名', dataIndex: 'source_file', key: 'file', ellipsis: true },
-    { title: '来源', dataIndex: 'source', key: 'source', width: 100 },
+    { title: '来源', dataIndex: 'source', key: 'source', width: 100,
+      render: (v: string) => SOURCE_MAP[v] || v || '-',
+    },
     { title: '总行数', dataIndex: 'total_rows', key: 'total', width: 80 },
     {
       title: '结果', key: 'result', width: 200,
@@ -388,7 +396,7 @@ export default function Import() {
                         </span>
                         {isSuccess && item.result && (
                           <Tag color="green" style={{ marginLeft: 4 }}>
-                            {item.result.source} · 导入 {item.result.imported_rows} · 跳过 {item.result.skipped_rows}
+                            {item.result.source ? (SOURCE_MAP[item.result.source] || item.result.source) : ''} · 导入 {item.result.imported_rows} · 跳过 {item.result.skipped_rows}
                           </Tag>
                         )}
                         {isError && (
