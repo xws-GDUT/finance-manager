@@ -14,38 +14,65 @@ from apps.imports.valid_engine import ValidRuleEngine
 from apps.imports.invalid_engine import InvalidRuleEngine
 
 # 默认规则种子数据
+# 核心原则：实实在在消费出去的=有效，本方内部各账户资金划转的=无效
 DEFAULT_VALID_RULES = [
-    {'name': '日常消费-银行储蓄卡', 'priority': 100, 'sources': 'bocom_debit,cmb_debit', 'directions': 'expense', 'keywords': '快捷支付,网上支付,银联,转账汇款'},
-    {'name': '信用卡消费', 'priority': 95, 'sources': 'cib_credit,cmb_credit', 'directions': 'expense', 'keywords': '财付通,支付宝,特约,美团'},
+    # ── 真实消费支出（7条）──
     {'name': '支付宝消费', 'priority': 90, 'sources': 'alipay', 'directions': 'expense'},
     {'name': '京东消费', 'priority': 85, 'sources': 'jd', 'directions': 'expense'},
     {'name': '美团消费', 'priority': 80, 'sources': 'meituan', 'directions': 'expense'},
-    {'name': '抖音消费', 'priority': 75, 'sources': 'douyin', 'directions': 'expense', 'keywords': '抖音月付'},
     {'name': '微信支付消费', 'priority': 88, 'sources': 'wechat', 'directions': 'expense'},
-    {'name': '工资收入', 'priority': 100, 'sources': 'bocom_debit', 'directions': 'income', 'keywords': '代发工资'},
-    {'name': '汇入及退款收入', 'priority': 90, 'directions': 'income', 'keywords': '退税,退款,退票'},
-    {'name': '信用卡还款记录', 'priority': 85, 'sources': 'cib_credit,cmb_credit', 'directions': 'income', 'keywords': '还款', 'is_active': False},
-    {'name': '消费退款', 'priority': 80, 'directions': 'income', 'keywords': '退款,退货,退票'},
+    {'name': '抖音消费', 'priority': 75, 'sources': 'douyin', 'directions': 'expense'},
+    {'name': '银行卡消费', 'priority': 100, 'sources': 'bocom_debit,cmb_debit', 'directions': 'expense',
+     'keywords': '快捷支付,网上支付,银联,POS,消费'},
+    {'name': '信用卡消费', 'priority': 95, 'sources': 'cib_credit,cmb_credit', 'directions': 'expense',
+     'keywords': '财付通,支付宝,特约,美团,POS,消费'},
+    # ── 真实收入（2条）──
+    {'name': '消费退款', 'priority': 90, 'directions': 'income', 'keywords': '退款,退货,退票,退税'},
+    {'name': '工资收入', 'priority': 100, 'sources': 'bocom_debit,cmb_debit', 'directions': 'income',
+     'keywords': '代发工资,工资,薪金'},
 ]
 
 DEFAULT_INVALID_RULES = [
-    {'name': '银行还款/白条/信贷', 'priority': 90, 'sources': 'bocom_debit,cmb_debit', 'keywords': '还款,白条,信贷,贷款,分期,信用卡还款'},
-    {'name': '银行理财/证券/利息', 'priority': 90, 'sources': 'bocom_debit,cmb_debit', 'keywords': '理财,基金,证券,利息,余额宝,朝朝盈,招盈通'},
-    {'name': '云闪付转账', 'priority': 85, 'sources': 'bocom_debit,cmb_debit', 'keywords': '云闪付'},
-    {'name': '转账给施金变', 'priority': 80, 'sources': 'bocom_debit,cmb_debit', 'counterparties': '施金变'},
-    {'name': '转账给许万森', 'priority': 80, 'sources': 'bocom_debit,cmb_debit', 'counterparties': '许万森'},
-    {'name': '转账给洗不完', 'priority': 80, 'sources': 'bocom_debit,cmb_debit', 'counterparties': '洗不完'},
-    {'name': '招行微信转账', 'priority': 85, 'sources': 'cmb_debit', 'keywords': '微信转账'},
-    {'name': '花呗/借呗/网商贷', 'priority': 90, 'sources': 'alipay', 'keywords': '花呗,借呗,网商贷,信用借还,自动还款'},
-    {'name': '理财/基金/余额宝', 'priority': 90, 'sources': 'alipay', 'keywords': '理财,基金,余额宝,蚂蚁财富,买入,赎回'},
-    {'name': '转账/提现', 'priority': 85, 'sources': 'alipay', 'keywords': '转账,提现,转入,转出'},
-    {'name': '信用借还', 'priority': 85, 'sources': 'alipay', 'keywords': '信用借还,借呗还款,花呗还款'},
-    {'name': '白条/还款/取现', 'priority': 90, 'sources': 'jd', 'keywords': '白条,还款,取现,分期'},
-    {'name': '还款/月付', 'priority': 90, 'sources': 'meituan', 'keywords': '还款,月付,分期'},
-    {'name': '还款/提现', 'priority': 90, 'sources': 'wechat', 'keywords': '还款,提现,零钱提现'},
-    {'name': '零钱通/理财/基金', 'priority': 90, 'sources': 'wechat', 'keywords': '零钱通,理财,基金,买入,赎回'},
-    {'name': '红包/亲属卡', 'priority': 85, 'sources': 'wechat', 'keywords': '红包,亲属卡,群收款'},
-    {'name': '汇入排除-内部转账', 'priority': 90, 'directions': 'income', 'counterparties': '许万森,何永丰,同花顺'},
+    # ── 还款/信贷类（7条）── 内部资金划转，非真实消费
+    {'name': '信用卡还款-储蓄卡', 'priority': 95, 'sources': 'bocom_debit,cmb_debit', 'directions': 'expense',
+     'keywords': '还款,信用卡还款,白条,信贷,贷款,分期'},
+    {'name': '信用卡还款-支付宝', 'priority': 95, 'sources': 'alipay',
+     'keywords': '还款,花呗,借呗,网商贷,信用借还,自动还款'},
+    {'name': '京东白条还款', 'priority': 95, 'sources': 'jd',
+     'keywords': '白条,还款,取现,分期'},
+    {'name': '美团还款', 'priority': 95, 'sources': 'meituan',
+     'keywords': '还款,月付,分期'},
+    {'name': '微信还款/提现', 'priority': 95, 'sources': 'wechat',
+     'keywords': '还款,提现,零钱提现'},
+    {'name': '信用卡入账-还款', 'priority': 95, 'sources': 'cib_credit,cmb_credit', 'directions': 'income',
+     'keywords': '还款'},
+    {'name': '储蓄卡还款入账', 'priority': 95, 'sources': 'bocom_debit,cmb_debit', 'directions': 'income',
+     'keywords': '还款'},
+    # ── 理财类（3条）── 内部资金划转
+    {'name': '银行理财', 'priority': 90, 'sources': 'bocom_debit,cmb_debit',
+     'keywords': '理财,基金,证券,利息,余额宝,朝朝盈,招盈通'},
+    {'name': '支付宝理财', 'priority': 90, 'sources': 'alipay',
+     'keywords': '理财,基金,余额宝,蚂蚁财富,买入,赎回'},
+    {'name': '微信理财', 'priority': 90, 'sources': 'wechat',
+     'keywords': '零钱通,理财,基金,买入,赎回'},
+    # ── 转账/提现类（5条）── 内部资金划转
+    {'name': '银行转账', 'priority': 85, 'sources': 'bocom_debit,cmb_debit',
+     'keywords': '转账,汇款,云闪付'},
+    {'name': '支付宝转账', 'priority': 85, 'sources': 'alipay',
+     'keywords': '转账,提现,转入,转出'},
+    {'name': '招行微信转账', 'priority': 85, 'sources': 'cmb_debit',
+     'keywords': '微信转账'},
+    {'name': '微信红包/亲属卡', 'priority': 85, 'sources': 'wechat',
+     'keywords': '红包,亲属卡,群收款'},
+    {'name': '内部转账收入', 'priority': 80, 'directions': 'income',
+     'counterparties': '许万森,何永丰,同花顺,施金变,洗不完'},
+    # ── 指定对手方内部转账（3条）──
+    {'name': '转账给施金变', 'priority': 80, 'sources': 'bocom_debit,cmb_debit',
+     'counterparties': '施金变'},
+    {'name': '转账给许万森', 'priority': 80, 'sources': 'bocom_debit,cmb_debit',
+     'counterparties': '许万森'},
+    {'name': '转账给洗不完', 'priority': 80, 'sources': 'bocom_debit,cmb_debit',
+     'counterparties': '洗不完'},
 ]
 
 
